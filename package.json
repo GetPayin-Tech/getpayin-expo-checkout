@@ -87,7 +87,7 @@
     "eslint": "^10.8.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react-hooks": "^7.0.0",
-    "expo-linking": "^7.0.0",
+    "expo-linking": "^58.0.16",
     "expo-web-browser": "^14.0.0",
     "markdownlint-cli": "^0.45.0",
     "prettier": "^3.9.6",
