@@ -7,12 +7,35 @@ updates:
       interval: weekly
     open-pull-requests-limit: 5
     groups:
-      # The package ships zero runtime dependencies — react-native, the web view and the
-      # two Expo modules are peers. Everything here is tooling, so grouping keeps the
-      # noise to one PR a week.
+      # React Native, React and the Expo modules are the peers the package is tested
+      # against. They have to move together, to the versions one Expo release lists
+      # (bundledNativeModules.json): bumped one at a time they make a set no real app
+      # has. Upgrade them by hand to a new Expo version, all in one change.
+      expo-sdk:
+        patterns:
+          - 'expo-*'
+          - 'react'
+          - 'react-native'
+          - 'react-native-*'
+          - '@types/react'
+      # Everything else is tooling, so grouping keeps the noise to one PR a week.
       dev-dependencies:
         patterns: ['*']
+        exclude-patterns:
+          - 'expo-*'
+          - 'react'
+          - 'react-native'
+          - 'react-native-*'
+          - '@types/react'
         update-types: ['minor', 'patch']
+    ignore:
+      # A new Expo version is a hand-made upgrade of the whole expo-sdk group.
+      - dependency-name: 'expo-*'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'react-native'
+        update-types: ['version-update:semver-minor', 'version-update:semver-major']
+      - dependency-name: 'react-native-*'
+        update-types: ['version-update:semver-major']
 
   - package-ecosystem: github-actions
     directory: /

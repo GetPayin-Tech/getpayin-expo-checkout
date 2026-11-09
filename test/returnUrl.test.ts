@@ -7,7 +7,7 @@ const RETURN_URL = 'myapp://payment-return';
 
 describe('matchesReturnUrl', () => {
   it('matches the configured link whatever query it carries', () => {
-    expect(matchesReturnUrl('myapp://payment-return?status=paid&invoice_id=7', RETURN_URL)).toBe(
+    expect(matchesReturnUrl('myapp://payment-return?success=1&invoice_id=7', RETURN_URL)).toBe(
       true,
     );
   });
@@ -38,102 +38,95 @@ describe('matchesReturnUrl', () => {
 });
 
 describe('readCheckoutResult', () => {
-  it('reads a paid return link', () => {
-    const result = readCheckoutResult('myapp://payment-return?status=paid&invoice_id=INV-1');
+  // The link exactly as GetPayIn's app-return bridge builds it (http_build_query).
+  const PAID_LINK =
+    'myapp://payment-return?success=1&invoice_id=4512&invoice_status=PAID' +
+    '&message=Payment+completed&signature=c2lnbmF0dXJl&auth_code=831204';
 
-    expect(result.status).toBe(CheckoutStatus.Paid);
-    expect(result.invoiceId).toBe('INV-1');
-    expect(result.returnUrl).toBe('myapp://payment-return?status=paid&invoice_id=INV-1');
+  it("reads GetPayIn's paid return link", () => {
+    const result = readCheckoutResult(PAID_LINK);
+
+    expect(result).toEqual({
+      status: CheckoutStatus.Paid,
+      invoiceId: '4512',
+      message: 'Payment completed',
+      returnUrl: PAID_LINK,
+    });
   });
 
-  it.each([
-    ['status=paid', CheckoutStatus.Paid],
-    ['status=success', CheckoutStatus.Paid],
-    ['status=COMPLETED', CheckoutStatus.Paid],
-    ['status=authorised', CheckoutStatus.Paid],
-    ['paid_status=paid', CheckoutStatus.Paid],
-    ['paymentStatus=succeeded', CheckoutStatus.Paid],
-    ['status=not_paid', CheckoutStatus.NotPaid],
-    ['status=notpaid', CheckoutStatus.NotPaid],
-    ['status=declined', CheckoutStatus.NotPaid],
-    ['status=failed', CheckoutStatus.NotPaid],
-    ['status=cancelled', CheckoutStatus.Cancelled],
-    ['status=canceled', CheckoutStatus.Cancelled],
-  ])('maps %s to %s', (query, expected) => {
-    expect(readCheckoutResult(`myapp://payment-return?${query}`).status).toBe(expected);
-  });
-
-  it.each([
-    ['success=true', CheckoutStatus.Paid],
-    ['success=1', CheckoutStatus.Paid],
-    ['success=false', CheckoutStatus.NotPaid],
-    ['success=0', CheckoutStatus.NotPaid],
-  ])('falls back to the success flag for %s', (query, expected) => {
-    expect(readCheckoutResult(`myapp://payment-return?${query}`).status).toBe(expected);
-  });
-
-  it.each(['invoice_id', 'invoiceId', 'INVOICE-ID', 'invoice', 'invoiceNumber', 'id'])(
-    'reads the invoice from %s',
-    (key) => {
-      const result = readCheckoutResult(`myapp://payment-return?status=paid&${key}=INV-9`);
-
-      expect(result.invoiceId).toBe('INV-9');
-    },
-  );
-
-  it.each(['message', 'error', 'error_message', 'reason', 'description'])(
-    'reads the message from %s',
-    (key) => {
-      const result = readCheckoutResult(
-        `myapp://payment-return?status=not_paid&${key}=Card%20declined`,
-      );
-
-      expect(result.message).toBe('Card declined');
-    },
-  );
-
-  it('decodes a plus as a space', () => {
+  it("reads GetPayIn's declined return link", () => {
     const result = readCheckoutResult(
-      'myapp://payment-return?status=not_paid&message=Card+declined',
+      'myapp://payment-return?success=0&invoice_id=4512&invoice_status=UNPAID' +
+        '&message=Card+declined&signature=c2lnbmF0dXJl',
     );
 
-    expect(result.message).toBe('Card declined');
+    expect(result).toMatchObject({
+      status: CheckoutStatus.NotPaid,
+      invoiceId: '4512',
+      message: 'Card declined',
+    });
+  });
+
+  it.each(['success=true', 'success=yes', 'success=2', 'status=paid', 'paid=1', 'result=success'])(
+    'does not accept %s, which GetPayIn never sends',
+    (query) => {
+      const result = readCheckoutResult(`myapp://payment-return?${query}&invoice_id=4512`);
+
+      expect(result.status).toBe(CheckoutStatus.NotPaid);
+      expect(result.message).toMatch(/recognises/i);
+    },
+  );
+
+  it.each(['success=%201%20', 'success=+1', 'Success=1', 'SUCCESS=1', 'success_=1'])(
+    'does not accept %s: the flag is read by its exact name and value',
+    (query) => {
+      expect(readCheckoutResult(`myapp://payment-return?${query}`).status).toBe(
+        CheckoutStatus.NotPaid,
+      );
+    },
+  );
+
+  it.each([
+    ['success', 'success=1&success=0&invoice_id=4512'],
+    ['invoice_id', 'success=1&invoice_id=4512&invoice_id=5001'],
+    ['message', 'success=1&invoice_id=4512&message=a&message=b'],
+  ])('treats a link that repeats %s as unreadable', (_field, query) => {
+    const result = readCheckoutResult(`myapp://payment-return?${query}`);
+
+    expect(result.status).toBe(CheckoutStatus.NotPaid);
+    expect(result.invoiceId).toBeUndefined();
+    expect(result.message).toMatch(/recognises/i);
+  });
+
+  it('is not thrown off by a __proto__ field', () => {
+    expect(
+      readCheckoutResult('myapp://payment-return?__proto__=x&success=1&invoice_id=4512').status,
+    ).toBe(CheckoutStatus.Paid);
   });
 
   it('leaves a malformed escape sequence alone rather than throwing', () => {
-    const result = readCheckoutResult('myapp://payment-return?status=not_paid&message=100%25%ZZ');
+    const result = readCheckoutResult('myapp://payment-return?success=0&message=100%25%ZZ');
 
     expect(result.status).toBe(CheckoutStatus.NotPaid);
     expect(result.message).toContain('%ZZ');
   });
 
-  it('reports an unreadable return link as not paid, never as paid', () => {
-    const result = readCheckoutResult('myapp://payment-return?foo=bar');
+  it('reports a link without the success flag as not paid, never as paid', () => {
+    const result = readCheckoutResult('myapp://payment-return?invoice_id=4512');
 
     expect(result.status).toBe(CheckoutStatus.NotPaid);
-    expect(result.message).toMatch(/does not recognise|recognises/i);
+    expect(result.message).toMatch(/recognises/i);
   });
 
-  it('reports a status it does not know as not paid', () => {
-    const result = readCheckoutResult('myapp://payment-return?status=weird-new-state');
+  it('reports a blank success flag as unreadable', () => {
+    const result = readCheckoutResult('myapp://payment-return?success=&invoice_id=4512');
 
     expect(result.status).toBe(CheckoutStatus.NotPaid);
-  });
-
-  it('ignores a blank parameter and keeps looking', () => {
-    const result = readCheckoutResult('myapp://payment-return?status=&success=true');
-
-    expect(result.status).toBe(CheckoutStatus.Paid);
-  });
-
-  it('prefers the first occurrence of a repeated parameter', () => {
-    const result = readCheckoutResult('myapp://payment-return?status=paid&status=failed');
-
-    expect(result.status).toBe(CheckoutStatus.Paid);
+    expect(result.message).toMatch(/recognises/i);
   });
 
   it('omits the invoice and message when the link carries neither', () => {
-    const result = readCheckoutResult('myapp://payment-return?status=paid');
+    const result = readCheckoutResult('myapp://payment-return?success=1');
 
     expect(result.invoiceId).toBeUndefined();
     expect(result.message).toBeUndefined();
@@ -144,30 +137,6 @@ describe('readCheckoutResult', () => {
 
     expect(result.status).toBe(CheckoutStatus.NotPaid);
     expect(result.returnUrl).toBe('nonsense');
-  });
-
-  it('lets a status resolver override the built-in reader', () => {
-    const result = readCheckoutResult('myapp://payment-return?outcome=settled&ref=A1', (params) =>
-      params.outcome === 'settled'
-        ? { status: CheckoutStatus.Paid, invoiceId: params.ref }
-        : undefined,
-    );
-
-    expect(result).toMatchObject({ status: CheckoutStatus.Paid, invoiceId: 'A1' });
-  });
-
-  it('falls back to the built-in reader when the resolver returns nothing', () => {
-    const result = readCheckoutResult('myapp://payment-return?status=paid', () => undefined);
-
-    expect(result.status).toBe(CheckoutStatus.Paid);
-  });
-
-  it('hands the resolver normalised parameter names', () => {
-    readCheckoutResult('myapp://payment-return?Invoice_Id=7', (params) => {
-      expect(params.invoiceid).toBe('7');
-
-      return undefined;
-    });
   });
 });
 

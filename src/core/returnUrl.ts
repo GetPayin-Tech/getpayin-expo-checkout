@@ -1,59 +1,27 @@
-import type { CheckoutResult, ReturnUrlParams, StatusResolver } from '../types';
+import type { CheckoutResult } from '../types';
 import { CheckoutStatus } from '../types';
-import { isSameTarget, normalizeToken, parseQuery, parseUrl } from './url';
+import { isSameTarget, parseUrl, readQuery } from './url';
 
-const STATUS_KEYS = ['status', 'paymentstatus', 'paidstatus', 'result', 'state'] as const;
-const SUCCESS_KEYS = ['success', 'paid', 'ispaid'] as const;
-const INVOICE_KEYS = ['invoiceid', 'invoice', 'invoicenumber', 'invoiceno', 'id'] as const;
-const MESSAGE_KEYS = [
-  'message',
-  'statusmessage',
-  'errormessage',
-  'error',
-  'reason',
-  'description',
-] as const;
-
-const PAID_TOKENS = new Set([
-  'paid',
-  'success',
-  'successful',
-  'succeeded',
-  'completed',
-  'complete',
-  'authorized',
-  'authorised',
-  'approved',
-  'true',
-  '1',
-  'yes',
-]);
-
-const NOT_PAID_TOKENS = new Set([
-  'notpaid',
-  'unpaid',
-  'failed',
-  'failure',
-  'fail',
-  'declined',
-  'decline',
-  'rejected',
-  'error',
-  'false',
-  '0',
-  'no',
-]);
-
-const CANCELLED_TOKENS = new Set([
-  'cancelled',
-  'canceled',
-  'cancel',
-  'aborted',
-  'abort',
-  'dismissed',
-  'usercancelled',
-  'usercanceled',
-]);
+/*
+ * The fields of GetPayIn's return link, as the backend's app-return bridge builds it:
+ *
+ *   myapp://payment-return?success=1&invoice_id=4512&invoice_status=PAID&message=…&signature=…
+ *
+ * `success` is `1` or `0`. Only `success`, `invoice_id` and `message` are read. A reader
+ * that also accepted other names (`status`, `state`, `result`, …) would let a field the
+ * backend adds later decide the outcome without anyone noticing.
+ *
+ * The names must match exactly and the values are taken as sent, and a link that repeats
+ * any of the three is unreadable. That keeps this reader and a server that checks the
+ * link's `signature` from ever reading different values out of the same link: a looser
+ * reader (any case, first copy wins) could report invoice B as paid from a link whose
+ * signature is genuine for invoice A. None of this stops a forged link from saying
+ * `success=1`; that is what the `invoice.paid` webhook on the server is for.
+ */
+const SUCCESS_KEY = 'success';
+const INVOICE_KEY = 'invoice_id';
+const MESSAGE_KEY = 'message';
+const READ_KEYS = [SUCCESS_KEY, INVOICE_KEY, MESSAGE_KEY] as const;
 
 const UNREADABLE_MESSAGE =
   'The checkout returned without a status this package recognises. Confirm the invoice on ' +
@@ -64,53 +32,32 @@ export function matchesReturnUrl(url: string, returnUrl: string): boolean {
   return isSameTarget(url, returnUrl);
 }
 
-/** Reads the first of `keys` that is present and not blank. */
-function firstValue(params: ReturnUrlParams, keys: readonly string[]): string | undefined {
-  for (const key of keys) {
-    const value = params[key];
+/** The single value of `key`, or `undefined` when it is absent or empty. */
+function readField(
+  params: ReadonlyMap<string, readonly string[]>,
+  key: string,
+): string | undefined {
+  const value = params.get(key)?.[0];
 
-    if (value !== undefined && value.trim() !== '') {
-      return value.trim();
-    }
-  }
-
-  return undefined;
+  return value === undefined || value === '' ? undefined : value;
 }
 
-/** Maps a reported status or success flag onto one of the three outcomes. */
-function classifyToken(value: string): CheckoutResult['status'] | undefined {
-  const token = normalizeToken(value);
+/** True when any field this reader uses appears more than once. */
+function repeatsAField(params: ReadonlyMap<string, readonly string[]>): boolean {
+  return READ_KEYS.some((key) => (params.get(key)?.length ?? 0) > 1);
+}
 
-  if (PAID_TOKENS.has(token)) {
+/** Maps GetPayIn's `success` flag onto an outcome; anything but `1` or `0` is unreadable. */
+function readStatus(success: string | undefined): CheckoutResult['status'] | undefined {
+  if (success === '1') {
     return CheckoutStatus.Paid;
   }
 
-  if (NOT_PAID_TOKENS.has(token)) {
+  if (success === '0') {
     return CheckoutStatus.NotPaid;
   }
 
-  if (CANCELLED_TOKENS.has(token)) {
-    return CheckoutStatus.Cancelled;
-  }
-
   return undefined;
-}
-
-/** Picks the outcome out of the parameters, preferring an explicit status parameter. */
-function readStatus(params: ReturnUrlParams): CheckoutResult['status'] | undefined {
-  const reported = firstValue(params, STATUS_KEYS);
-
-  if (reported !== undefined) {
-    const classified = classifyToken(reported);
-
-    if (classified !== undefined) {
-      return classified;
-    }
-  }
-
-  const flag = firstValue(params, SUCCESS_KEYS);
-
-  return flag === undefined ? undefined : classifyToken(flag);
 }
 
 /**
@@ -120,19 +67,17 @@ function readStatus(params: ReturnUrlParams): CheckoutResult['status'] | undefin
  * never `paid`: the app is not allowed to decide that a payment succeeded, and the
  * `invoice.paid` webhook on your server is what settles it either way.
  */
-export function readCheckoutResult(url: string, statusResolver?: StatusResolver): CheckoutResult {
-  const parsed = parseUrl(url);
-  const params = parseQuery(parsed?.query ?? '');
-  const resolved = statusResolver?.(params, url);
+export function readCheckoutResult(url: string): CheckoutResult {
+  const params = readQuery(parseUrl(url)?.query ?? '');
 
-  if (resolved !== undefined) {
-    return { ...resolved, returnUrl: url };
+  if (repeatsAField(params)) {
+    return { status: CheckoutStatus.NotPaid, message: UNREADABLE_MESSAGE, returnUrl: url };
   }
 
-  const status = readStatus(params);
-  const invoiceId = firstValue(params, INVOICE_KEYS);
+  const status = readStatus(readField(params, SUCCESS_KEY));
+  const invoiceId = readField(params, INVOICE_KEY);
   const message =
-    firstValue(params, MESSAGE_KEYS) ?? (status === undefined ? UNREADABLE_MESSAGE : undefined);
+    readField(params, MESSAGE_KEY) ?? (status === undefined ? UNREADABLE_MESSAGE : undefined);
 
   return {
     status: status ?? CheckoutStatus.NotPaid,
@@ -144,8 +89,7 @@ export function readCheckoutResult(url: string, statusResolver?: StatusResolver)
 
 /** What {@link resolveReturn} needs in order to turn a link into a result. */
 export interface ReturnResolution {
-  readonly statusResolver?: StatusResolver;
-  readonly expectedInvoiceId?: string;
+  readonly expectedInvoiceId?: string | number;
 }
 
 const WRONG_INVOICE_MESSAGE =
@@ -157,13 +101,25 @@ const WRONG_INVOICE_MESSAGE =
  *
  * Only `paid` is downgraded. A `not_paid` or `cancelled` carries no claim worth checking,
  * and rewriting it would lose the reason the payer was given.
+ *
+ * The comparison is on trimmed text. GetPayIn hands the invoice id to the server as a
+ * number and puts it in the return link as text, so comparing the values as they arrive
+ * would turn every paid checkout into `not_paid`. Only `undefined` means no invoice to bind
+ * to; an empty value or `null` from untyped code binds to nothing, so a `paid` is refused.
+ * `open()` and the view reject those values up front (`assertExpectedInvoiceId`); this is
+ * the fail-closed backstop for callers of the lower-level exports.
  */
-function bindToInvoice(result: CheckoutResult, expectedInvoiceId?: string): CheckoutResult {
+function bindToInvoice(
+  result: CheckoutResult,
+  expectedInvoiceId?: string | number,
+): CheckoutResult {
   if (expectedInvoiceId === undefined || result.status !== CheckoutStatus.Paid) {
     return result;
   }
 
-  if (result.invoiceId === expectedInvoiceId) {
+  const expected = String(expectedInvoiceId ?? '').trim();
+
+  if (expected !== '' && result.invoiceId === expected) {
     return result;
   }
 
@@ -177,7 +133,7 @@ function bindToInvoice(result: CheckoutResult, expectedInvoiceId?: string): Chec
  * drift apart on what a given link means.
  */
 export function resolveReturn(url: string, options: ReturnResolution): CheckoutResult {
-  return bindToInvoice(readCheckoutResult(url, options.statusResolver), options.expectedInvoiceId);
+  return bindToInvoice(readCheckoutResult(url), options.expectedInvoiceId);
 }
 
 /** The result for a payer who closed the checkout without finishing. */

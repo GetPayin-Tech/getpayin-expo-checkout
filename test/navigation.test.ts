@@ -41,8 +41,18 @@ describe('classifyNavigation', () => {
     expect(classifyNavigation(url, RETURN_URL)).toBe('block');
   });
 
+  it.each(['com.shop.app://orders/1/cancel', 'COM.SHOP.APP://settings', 'myapp-ios://account'])(
+    'refuses %s, another scheme the host app answers to',
+    (url) => {
+      expect(classifyNavigation(url, RETURN_URL, ['com.shop.app', 'MyApp-iOS'])).toBe('block');
+    },
+  );
+
   it('still hands a different app its own scheme', () => {
     expect(classifyNavigation('mybank://authorise/3ds/1', RETURN_URL)).toBe('external');
+    expect(classifyNavigation('mybank://authorise/3ds/1', RETURN_URL, ['com.shop.app'])).toBe(
+      'external',
+    );
   });
 
   it('keeps a relative navigation in the web view', () => {

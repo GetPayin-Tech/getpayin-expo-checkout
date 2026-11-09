@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Modal, Platform, Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+// Not React Native's own SafeAreaView: that one is deprecated since 0.81 and only pads on
+// iOS. On Android with edge-to-edge (always on for Expo 54 apps on Android 16) the modal
+// draws under the status bar, so the top bar and its Close button need this padding.
+// The modal gets its own SafeAreaProvider: on the old architecture the iOS view applies no
+// padding at all unless a provider sits above it inside the same native view tree, and
+// the app's own provider, if any, is outside the modal.
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { registerPresenter, unregisterPresenter } from '../sessions/registry';
 import { createSessionHost } from '../sessions/sessionHost';
@@ -7,6 +14,7 @@ import type { CheckoutRequest, GetPayInProviderProps } from '../types';
 import { GetPayInCheckoutView } from './GetPayInCheckoutView';
 
 const DEFAULT_TITLE = 'Secure checkout';
+const DEFAULT_CLOSE_LABEL = 'Close';
 
 /**
  * Hosts the in-app checkout screen.
@@ -51,6 +59,7 @@ export function GetPayInProvider({ children }: GetPayInProviderProps): React.JSX
    */
   const failed = loadError !== undefined;
   const headerShown = request?.options.headerShown !== false || failed;
+  const closeLabel = request?.options.closeLabel ?? DEFAULT_CLOSE_LABEL;
 
   return (
     <>
@@ -61,43 +70,45 @@ export function GetPayInProvider({ children }: GetPayInProviderProps): React.JSX
         presentationStyle="fullScreen"
         onRequestClose={cancel}
       >
-        <SafeAreaView style={styles.screen}>
-          {headerShown ? (
-            <View style={styles.header}>
-              <Text style={styles.title} numberOfLines={1}>
-                {request?.options.title ?? DEFAULT_TITLE}
-              </Text>
-              <Pressable
-                onPress={failed ? dismissAfterFailure : cancel}
-                accessibilityRole="button"
-                accessibilityLabel="Close checkout"
-                hitSlop={12}
-                style={styles.closeButton}
-              >
-                <Text style={styles.closeLabel}>Close</Text>
-              </Pressable>
-            </View>
-          ) : null}
-          {failed ? (
-            <View style={styles.failure}>
-              <Text style={styles.failureText}>{loadError}</Text>
-            </View>
-          ) : null}
-          {request && !failed ? (
-            <GetPayInCheckoutView
-              checkoutUrl={request.checkoutUrl}
-              returnUrl={request.options.returnUrl}
-              {...(request.options.statusResolver === undefined
-                ? {}
-                : { statusResolver: request.options.statusResolver })}
-              {...(request.options.expectedInvoiceId === undefined
-                ? {}
-                : { expectedInvoiceId: request.options.expectedInvoiceId })}
-              onComplete={host.finish}
-              onLoadError={setLoadError}
-            />
-          ) : null}
-        </SafeAreaView>
+        <SafeAreaProvider>
+          <SafeAreaView style={styles.screen}>
+            {headerShown ? (
+              <View style={styles.header}>
+                <Text style={styles.title} numberOfLines={1}>
+                  {request?.options.title ?? DEFAULT_TITLE}
+                </Text>
+                <Pressable
+                  onPress={failed ? dismissAfterFailure : cancel}
+                  accessibilityRole="button"
+                  accessibilityLabel={request?.options.closeLabel ?? 'Close checkout'}
+                  hitSlop={12}
+                  style={styles.closeButton}
+                >
+                  <Text style={styles.closeLabel}>{closeLabel}</Text>
+                </Pressable>
+              </View>
+            ) : null}
+            {failed ? (
+              <View style={styles.failure}>
+                <Text style={styles.failureText}>{loadError}</Text>
+              </View>
+            ) : null}
+            {request && !failed ? (
+              <GetPayInCheckoutView
+                checkoutUrl={request.checkoutUrl}
+                returnUrl={request.options.returnUrl}
+                {...(request.options.expectedInvoiceId === undefined
+                  ? {}
+                  : { expectedInvoiceId: request.options.expectedInvoiceId })}
+                {...(request.options.loadErrorMessage === undefined
+                  ? {}
+                  : { loadErrorMessage: request.options.loadErrorMessage })}
+                onComplete={host.finish}
+                onLoadError={setLoadError}
+              />
+            ) : null}
+          </SafeAreaView>
+        </SafeAreaProvider>
       </Modal>
     </>
   );

@@ -82,12 +82,18 @@ function decodeValue(value: string): string {
 }
 
 /**
- * Reads a query string into a map keyed by {@link normalizeToken}, so `invoice_id`,
- * `invoiceId` and `INVOICE-ID` all arrive under the same key. The first occurrence of a
- * key wins.
+ * Reads a query string into every value given for each name, in order.
+ *
+ * Names are decoded but otherwise kept exactly as sent, so `Success` is not `success`. A
+ * return link has to be read the way the server that checks its signature reads it: if
+ * the two could disagree about which value a field holds, a link could be signed for one
+ * invoice and reported for another. Every value is kept so the caller can refuse a name
+ * that appears more than once instead of picking one copy.
+ *
+ * A `Map`, not an object, so a name such as `__proto__` or `constructor` is just a name.
  */
-export function parseQuery(query: string): Record<string, string> {
-  const params: Record<string, string> = {};
+export function readQuery(query: string): Map<string, string[]> {
+  const params = new Map<string, string[]>();
 
   for (const pair of query.split('&')) {
     if (pair === '') {
@@ -97,13 +103,14 @@ export function parseQuery(query: string): Record<string, string> {
     const separatorIndex = pair.indexOf('=');
     const rawKey = separatorIndex === -1 ? pair : pair.slice(0, separatorIndex);
     const rawValue = separatorIndex === -1 ? '' : pair.slice(separatorIndex + 1);
-    const key = normalizeToken(decodeValue(rawKey));
+    const key = decodeValue(rawKey);
+    const values = params.get(key);
 
-    if (key === '' || key in params) {
-      continue;
+    if (values === undefined) {
+      params.set(key, [decodeValue(rawValue)]);
+    } else {
+      values.push(decodeValue(rawValue));
     }
-
-    params[key] = decodeValue(rawValue);
   }
 
   return params;

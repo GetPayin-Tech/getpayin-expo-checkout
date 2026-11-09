@@ -24,7 +24,7 @@ an SMS, a QR code, or `startActivity` from any other installed app — carrying 
 query it likes:
 
 ```text
-myapp://payment-return?status=paid&invoice_id=whatever-the-attacker-wants
+myapp://payment-return?success=1&invoice_id=whatever-the-attacker-wants
 ```
 
 So `status: 'paid'` means "the link said so", not "the money moved".
@@ -77,11 +77,17 @@ Two of those deserve explanation.
 
 **Why `external` exists, and why it is narrowed.** A 3-D Secure step can hand the payer to
 their bank's app, and every acquirer has a different set of bank schemes, so this cannot be
-an allow-list inside the package. It is narrowed in three ways instead: script schemes are
-refused; **your own app's scheme is refused whenever it is not the return link**, so a page
-cannot drive your app's deep-link routes; and the handoff goes through `canOpenURL` first,
-so the phone must actually have a handler. On iOS that means a bank app's scheme has to be
-in `LSApplicationQueriesSchemes` — see [Setup](setup.md#ios).
+an allow-list inside the package. It is narrowed in two ways instead: script schemes are
+refused, and **every scheme your own app answers to is refused whenever it is not the
+return link** (the schemes in your app config, the iOS bundle identifier, the Android
+package name and the development-build scheme), so a page cannot drive your app's
+deep-link routes. Anything else is opened with `openURL` directly.
+
+That is a trade-off. Asking `canOpenURL` first would limit pages to the schemes your app
+has declared — in practice none, so a bank-app step would never open. Without it, a page
+inside the checkout can open another installed app without a tap, which is exactly what a
+bank-app step needs. A link nothing on the phone can open fails quietly and the checkout
+stays where it was.
 
 The reason this matters: a 3-D Secure page is hosted by the **issuer**, not by GetPayIn.
 The page driving these navigations is not one this package controls.

@@ -19,8 +19,6 @@ export type {
   GetPayInProviderProps,
   OpenCheckoutOptions,
   PlatformName,
-  ReturnUrlParams,
-  StatusResolver,
 } from './types';
 
 export {

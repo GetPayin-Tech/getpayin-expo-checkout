@@ -26,7 +26,7 @@ const consumedInitialUrls = new Set<string>();
  * Takes the link the app was launched with out of circulation before any checkout starts.
  *
  * The return scheme is public, so any web page, message or other app on the phone can
- * cold-start the app with a forged `?status=paid&invoice_id=…`. That link belongs to no
+ * cold-start the app with a forged `?success=1&invoice_id=…`. That link belongs to no
  * session — a cold start has destroyed the promise that was waiting for a result — so
  * attributing it to the next checkout the payer opens would report an order as paid that
  * nobody has paid for.

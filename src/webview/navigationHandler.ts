@@ -1,12 +1,13 @@
 import { classifyNavigation } from '../core/navigation';
 import { resolveReturn } from '../core/returnUrl';
-import type { CheckoutResult, StatusResolver } from '../types';
+import type { CheckoutResult } from '../types';
 
 /** What a navigation handler needs in order to act on a navigation request. */
 export interface NavigationHandlerOptions {
   readonly returnUrl: string;
-  readonly statusResolver?: StatusResolver;
-  readonly expectedInvoiceId?: string;
+  readonly expectedInvoiceId?: string | number;
+  /** Every other scheme the host app answers to; refused like the return link's scheme. */
+  readonly ownSchemes?: readonly string[];
   readonly onComplete: (result: CheckoutResult) => void;
   readonly onExternal: (url: string) => void;
 }
@@ -29,16 +30,13 @@ export function createNavigationHandler(
   let completed = false;
 
   return (url: string): boolean => {
-    const decision = classifyNavigation(url, options.returnUrl);
+    const decision = classifyNavigation(url, options.returnUrl, options.ownSchemes);
 
     if (decision === 'return') {
       if (!completed) {
         completed = true;
         options.onComplete(
           resolveReturn(url, {
-            ...(options.statusResolver === undefined
-              ? {}
-              : { statusResolver: options.statusResolver }),
             ...(options.expectedInvoiceId === undefined
               ? {}
               : { expectedInvoiceId: options.expectedInvoiceId }),

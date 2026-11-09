@@ -39,18 +39,6 @@ export type CheckoutPresentation = 'in-app' | 'browser';
 /** The platforms the presentation rule distinguishes between. */
 export type PlatformName = 'ios' | 'android' | string;
 
-/** Query parameters read off a return link, keyed by their normalised name. */
-export type ReturnUrlParams = Readonly<Record<string, string>>;
-
-/**
- * Turns the query parameters of a return link into a result.
- *
- * Supply one through {@link OpenCheckoutOptions.statusResolver} when an integration
- * reports its outcome under parameter names the built-in reader does not know. Return
- * `undefined` to fall back to the built-in reader.
- */
-export type StatusResolver = (params: ReturnUrlParams, url: string) => CheckoutResult | undefined;
-
 /** Options shared by every way of presenting a checkout. */
 export interface CheckoutOptions {
   /**
@@ -77,20 +65,43 @@ export interface CheckoutOptions {
    * page, message or other app on the phone can invoke with whatever query it likes, so a
    * link naming a different invoice is not this checkout's result. With this set, such a
    * link is reported as `not_paid` instead of being taken at its word.
+   *
+   * A number is accepted as well as text: `POST /api/integration/init` and the
+   * `@getpayin/getpayin` server SDK both return the invoice id as a number, while the
+   * return link carries it as text. The two are compared as text.
+   *
+   * Leave it out when you have no invoice id. `null`, an empty value or anything that is
+   * not text or a number is refused with `GetPayInConfigError`, because taken as "not
+   * given" it would accept a paid link for any invoice. A field missing from your server's
+   * response arrives as `undefined`, which looks exactly like leaving the option out and
+   * turns the check off — make sure your server always sends the invoice id.
    */
-  readonly expectedInvoiceId?: string;
+  readonly expectedInvoiceId?: string | number;
 
   /** Overrides the presentation rule. Intended for tests and for diagnosing a build. */
   readonly presentation?: CheckoutPresentation;
 
-  /** Reads the outcome off the return link when the built-in reader cannot. */
-  readonly statusResolver?: StatusResolver;
+  /**
+   * The text shown to the payer when the checkout page cannot be loaded, in your app's
+   * language.
+   *
+   * @defaultValue 'The checkout could not be loaded. Check the connection and try again.'
+   */
+  readonly loadErrorMessage?: string;
 }
 
 /** Options for {@link GetPayInCheckout.open}. */
 export interface OpenCheckoutOptions extends CheckoutOptions {
   /** Title shown in the in-app screen's top bar. */
   readonly title?: string;
+
+  /**
+   * The label of the in-app screen's close button, in your app's language. When set, it
+   * is also what a screen reader announces for the button (otherwise "Close checkout").
+   *
+   * @defaultValue 'Close'
+   */
+  readonly closeLabel?: string;
 
   /**
    * Show the in-app screen's top bar, which is the payer's only way to close the

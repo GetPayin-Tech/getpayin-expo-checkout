@@ -71,8 +71,9 @@ around it — the gate is the point.
    letting a byte-identical link settle a second genuine checkout.
 3. **`expectedInvoiceId` downgrades only `paid`.** Rewriting a `not_paid` or `cancelled`
    would lose the reason the payer was given.
-4. **A script scheme, and the app's own scheme, never reach `Linking.openURL`.**
-   `classifyNavigation` must return `block` for both. `external` hands a URL to the phone
+4. **A script scheme, and any scheme the app answers to, never reach `Linking.openURL`.**
+   `classifyNavigation` must return `block` for both; the app's schemes come from
+   `hostAppSchemes()` (app config schemes, iOS bundle identifier, Android package). `external` hands a URL to the phone
    and the page — which may be issuer-hosted, not GetPayIn's — is what chose it.
 5. **The navigation handler is keyed to the session, not the callbacks.** It completes at
    most once; rebuilding it on a fresh inline `onComplete` resets that latch and reports one

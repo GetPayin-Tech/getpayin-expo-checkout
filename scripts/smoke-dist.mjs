@@ -48,7 +48,14 @@ const REQUIRED = [
 ];
 
 /** Peers that must stay external so the host app's single copy is the one used. */
-const EXTERNALS = ['react-native', 'react-native-webview', 'expo-web-browser', 'expo-linking'];
+const EXTERNALS = [
+  'react-native',
+  'react-native-safe-area-context',
+  'react-native-webview',
+  'expo-web-browser',
+  'expo-linking',
+  'expo-constants',
+];
 
 /** Public names the type declarations must carry. */
 const EXPORTS = [

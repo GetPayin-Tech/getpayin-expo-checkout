@@ -55,7 +55,6 @@ function withGrace(promise: Promise<CheckoutResult>): Promise<CheckoutResult | u
 export async function runBrowserCheckout(request: CheckoutRequest): Promise<CheckoutResult> {
   const { checkoutUrl, options } = request;
   const resolution: ReturnResolution = {
-    ...(options.statusResolver === undefined ? {} : { statusResolver: options.statusResolver }),
     ...(options.expectedInvoiceId === undefined
       ? {}
       : { expectedInvoiceId: options.expectedInvoiceId }),

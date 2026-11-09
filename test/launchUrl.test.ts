@@ -51,7 +51,7 @@ beforeEach(() => {
 
 describe('the link the app was launched with', () => {
   it('never settles a checkout opened later in the same process', async () => {
-    linking.initialUrl.current = `${RETURN_URL}?status=paid&invoice_id=INV-ATTACKER`;
+    linking.initialUrl.current = `${RETURN_URL}?success=1&invoice_id=INV-ATTACKER`;
 
     const watchForReturnUrl = await importWatcher();
     await flush();
@@ -65,7 +65,7 @@ describe('the link the app was launched with', () => {
   });
 
   it('does not block a genuine link that arrives while the checkout is open', async () => {
-    linking.initialUrl.current = `${RETURN_URL}?status=paid&invoice_id=INV-ATTACKER`;
+    linking.initialUrl.current = `${RETURN_URL}?success=1&invoice_id=INV-ATTACKER`;
 
     const watchForReturnUrl = await importWatcher();
     await flush();
@@ -74,7 +74,7 @@ describe('the link the app was launched with', () => {
     const watcher = watchForReturnUrl(RETURN_URL, onMatch);
     await flush();
 
-    const genuine = `${RETURN_URL}?status=paid&invoice_id=INV-REAL`;
+    const genuine = `${RETURN_URL}?success=1&invoice_id=INV-REAL`;
     emit(genuine);
 
     expect(onMatch).toHaveBeenCalledExactlyOnceWith(genuine);
@@ -87,7 +87,7 @@ describe('the link the app was launched with', () => {
     const watchForReturnUrl = await importWatcher();
     await flush();
 
-    const recreated = `${RETURN_URL}?status=paid&invoice_id=INV-REAL`;
+    const recreated = `${RETURN_URL}?success=1&invoice_id=INV-REAL`;
     linking.initialUrl.current = recreated;
 
     const onMatch = vi.fn();
@@ -102,7 +102,7 @@ describe('the link the app was launched with', () => {
     const watchForReturnUrl = await importWatcher();
     await flush();
 
-    const url = `${RETURN_URL}?status=paid`;
+    const url = `${RETURN_URL}?success=1`;
 
     const first = vi.fn();
     const firstWatcher = watchForReturnUrl(RETURN_URL, first);

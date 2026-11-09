@@ -19,11 +19,12 @@ depend on.
 ## Install
 
 ```bash
-npx expo install @getpayin/expo-checkout react-native-webview expo-web-browser expo-linking
+npx expo install @getpayin/expo-checkout react-native-webview react-native-safe-area-context expo-web-browser expo-linking expo-constants
 ```
 
-Then rebuild. The web view is native code, so a JavaScript-only reload will not pick it
-up.
+expo-router and React Navigation apps already have `react-native-safe-area-context` and
+`expo-constants`. Then rebuild. The web view is native code, so a JavaScript-only reload
+will not pick it up.
 
 ## Your app's scheme
 
@@ -90,24 +91,9 @@ Nothing extra. Mount `GetPayInProvider` above your navigator and the modal sits 
 Apple Pay needs no configuration in your app. It works in the checkout screen as long as
 you use the package's view as it is.
 
-One case does need a declaration. If your acquirer's 3-D Secure flow hands the payer to a
-**bank app** rather than a web page, iOS will not open that app unless its scheme is
-declared:
-
-```json
-{
-  "expo": {
-    "ios": {
-      "infoPlist": {
-        "LSApplicationQueriesSchemes": ["yourbankscheme"]
-      }
-    }
-  }
-}
-```
-
-Ask GetPayIn support which schemes apply to your acquirer. Most 3-D Secure steps are web
-pages and need nothing here.
+A 3-D Secure step that hands the payer to their **bank's app** needs nothing either, on iOS
+or Android. The package opens the bank app directly, so you do not declare bank schemes in
+`LSApplicationQueriesSchemes` or `<queries>`.
 
 ## Android
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { assertCheckoutUrl, assertReturnUrl } from '../src/core/validate';
+import { assertCheckoutUrl, assertExpectedInvoiceId, assertReturnUrl } from '../src/core/validate';
 import { GetPayInConfigError } from '../src/errors';
 
 describe('assertCheckoutUrl', () => {
@@ -35,5 +35,39 @@ describe('assertReturnUrl', () => {
 
   it('hands back the trimmed value it validated', () => {
     expect(assertReturnUrl(' myapp://payment-return ')).toBe('myapp://payment-return');
+  });
+});
+
+describe('assertExpectedInvoiceId', () => {
+  it.each([4512, '4512', ' 4512 ', 'INV-1'])('accepts %s', (value) => {
+    expect(assertExpectedInvoiceId(value)).toBe(value);
+  });
+
+  it('accepts no invoice id at all', () => {
+    expect(assertExpectedInvoiceId(undefined)).toBeUndefined();
+  });
+
+  it.each([
+    ['an empty string', ''],
+    ['a blank string', '   '],
+    ['null', null],
+    ['NaN', Number.NaN],
+    ['Infinity', Number.POSITIVE_INFINITY],
+    ['true', true],
+    ['the whole init response', { invoice_id: 4512, checkout_url: 'https://x' }],
+    ['an array', [4512]],
+  ])('refuses %s with GetPayInConfigError', (_label, value) => {
+    expect(() => assertExpectedInvoiceId(value)).toThrow(GetPayInConfigError);
+  });
+
+  it('names a bad object without serialising it, so a circular one cannot break the message', () => {
+    const circular: Record<string, unknown> = {};
+    circular.self = circular;
+
+    expect(() => assertExpectedInvoiceId(circular)).toThrow(/a value of type object/);
+  });
+
+  it('shows a bad text value as written', () => {
+    expect(() => assertExpectedInvoiceId('  ')).toThrow(/received " {2}"/);
   });
 });

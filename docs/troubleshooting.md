@@ -87,9 +87,13 @@ checkout was opened for. Either something forged the link, or your code passed t
 
 ## A 3-D Secure bank app does not open
 
-On iOS, opening another app needs its scheme in
-`ios.infoPlist.LSApplicationQueriesSchemes`. See [Setup](setup.md#ios). Ask GetPayIn
-support which schemes your acquirer uses.
+The package opens the bank's link directly, with no scheme to declare. If nothing opens,
+the bank's app is most likely not installed on that phone; the payer can finish the step
+on the bank's web page if it offers one.
+
+On Android, some bank pages use `intent://` links, which a web view cannot follow the way
+Chrome does. If a bank's step works in the browser sheet but not in your app's own screen,
+please report it with the bank's name.
 
 The package deliberately refuses two kinds of link rather than handing them to the phone:
 script schemes (`javascript:`, `vbscript:`) and your own app's scheme when it is not the

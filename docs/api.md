@@ -17,15 +17,16 @@ Every failure arrives as a rejection, so one `catch` covers them all.
 
 ### `OpenCheckoutOptions`
 
-| Option              | Type                    | Default             | What it does                                                                                                                                                     |
-| ------------------- | ----------------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `returnUrl`         | `string`                | required            | The link the checkout returns to. Must match the integration's Mobile App Return Scheme.                                                                         |
-| `expectedInvoiceId` | `string`                | —                   | The invoice your server created this checkout for. A return link naming a different invoice is reported as `not_paid`. Pass it whenever you have it.             |
-| `googlePayInApp`    | `boolean`               | `false`             | Draw the checkout in the app's own screen on Android. Set it only after Google approves your app. Ignored on iOS.                                                |
-| `title`             | `string`                | `'Secure checkout'` | Title in the in-app screen's top bar.                                                                                                                            |
-| `headerShown`       | `boolean`               | `true`              | Show the top bar, which is the payer's only way to close the checkout. The bar is shown anyway if the checkout fails to load, so a failure always has a way out. |
-| `statusResolver`    | `StatusResolver`        | —                   | Reads the outcome off the return link when the built-in reader cannot.                                                                                           |
-| `presentation`      | `'in-app' \| 'browser'` | —                   | Overrides the platform rule. For tests and for diagnosing a build.                                                                                               |
+| Option              | Type                    | Default             | What it does                                                                                                                                                                                                                                                                                |
+| ------------------- | ----------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `returnUrl`         | `string`                | required            | The link the checkout returns to. Must match the integration's Mobile App Return Scheme.                                                                                                                                                                                                    |
+| `expectedInvoiceId` | `string \| number`      | —                   | The invoice your server created this checkout for, as init returned it (a number is fine). A return link naming a different invoice is reported as `not_paid`. Pass it whenever you have it; leave it out rather than passing `null` or `''`, which are refused with `GetPayInConfigError`. |
+| `googlePayInApp`    | `boolean`               | `false`             | Draw the checkout in the app's own screen on Android. Set it only after Google approves your app. Ignored on iOS.                                                                                                                                                                           |
+| `title`             | `string`                | `'Secure checkout'` | Title in the in-app screen's top bar.                                                                                                                                                                                                                                                       |
+| `closeLabel`        | `string`                | `'Close'`           | Label of the top bar's close button, in your app's language. Also what a screen reader announces when set.                                                                                                                                                                                  |
+| `loadErrorMessage`  | `string`                | English text        | Shown to the payer when the checkout page cannot be loaded, in your app's language.                                                                                                                                                                                                         |
+| `headerShown`       | `boolean`               | `true`              | Show the top bar, which is the payer's only way to close the checkout. The bar is shown anyway if the checkout fails to load, so a failure always has a way out.                                                                                                                            |
+| `presentation`      | `'in-app' \| 'browser'` | —                   | Overrides the platform rule. For tests and for diagnosing a build.                                                                                                                                                                                                                          |
 
 ## `GetPayInCheckout.presentationFor(options)`
 
@@ -60,8 +61,8 @@ navigation. `open()` needs it to present an in-app checkout.
 <GetPayInCheckoutView
   checkoutUrl={string}
   returnUrl={string}
-  expectedInvoiceId={string | undefined}
-  statusResolver={StatusResolver | undefined}
+  expectedInvoiceId={string | number | undefined}
+  loadErrorMessage={string | undefined}
   onComplete={(result: CheckoutResult) => void}
   onLoadError={(message: string) => void}
 />
@@ -112,45 +113,33 @@ const CheckoutStatus = {
 } as const;
 ```
 
-### `StatusResolver`
-
-```ts
-type StatusResolver = (
-  params: Readonly<Record<string, string>>,
-  url: string,
-) => CheckoutResult | undefined;
-```
-
-Parameter names arrive lowercased with `-`, `_` and `.` removed. Return `undefined` to
-fall back to the built-in reader.
-
 ### Other exported types
 
 `CheckoutOptions`, `CheckoutPresentation`, `CheckoutPresenter`, `CheckoutRequest`,
 `CheckoutStatusName`, `GetPayInCheckoutViewProps`, `GetPayInProviderProps`, `PlatformName`,
-`ReturnUrlParams`, `ReturnResolution`, `NativeIntentEvent`.
+`ReturnResolution`, `NativeIntentEvent`.
 
 ## Errors
 
 All extend `GetPayInCheckoutError`.
 
-| Error                          | When                                                                 |
-| ------------------------------ | -------------------------------------------------------------------- |
-| `GetPayInConfigError`          | `checkoutUrl` is not an `http(s)` URL, or `returnUrl` has no scheme. |
-| `GetPayInProviderMissingError` | An in-app checkout with no `<GetPayInProvider>` mounted above it.    |
-| `GetPayInSessionBusyError`     | Another checkout is still open.                                      |
+| Error                          | When                                                                                                                              |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| `GetPayInConfigError`          | `checkoutUrl` is not an `http(s)` URL, `returnUrl` has no scheme, or `expectedInvoiceId` is `null`, empty or not a finite number. |
+| `GetPayInProviderMissingError` | An in-app checkout with no `<GetPayInProvider>` mounted above it.                                                                 |
+| `GetPayInSessionBusyError`     | Another checkout is still open.                                                                                                   |
 
 ## Lower-level exports
 
 These are the package's own decision-making, exported because they are useful for tests
 and diagnostics. You do not need them for a normal integration.
 
-| Export                                                          | What it does                                                             |
-| --------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| `readCheckoutResult(url, statusResolver?)`                      | Turns a return link into a `CheckoutResult`.                             |
-| `resolveReturn(url, { statusResolver?, expectedInvoiceId? })`   | The same, bound to an invoice. Both presentations use this.              |
-| `matchesReturnUrl(url, returnUrl)`                              | True when `url` is the return link, whatever its query.                  |
-| `resolvePresentation({ platform, googlePayInApp?, override? })` | The platform rule, as a pure function.                                   |
-| `classifyNavigation(url, returnUrl)`                            | `'return' \| 'external' \| 'load' \| 'block'` for one navigation.        |
-| `createNavigationHandler(options)`                              | The web view's navigation decision, for embedding the checkout yourself. |
-| `buildCheckoutWebViewProps(platform)`                           | The web view settings the wallets need.                                  |
+| Export                                                          | What it does                                                                               |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `readCheckoutResult(url)`                                       | Turns GetPayIn's return link (`success`, `invoice_id`, `message`) into a `CheckoutResult`. |
+| `resolveReturn(url, { expectedInvoiceId? })`                    | The same, bound to an invoice. Both presentations use this.                                |
+| `matchesReturnUrl(url, returnUrl)`                              | True when `url` is the return link, whatever its query.                                    |
+| `resolvePresentation({ platform, googlePayInApp?, override? })` | The platform rule, as a pure function.                                                     |
+| `classifyNavigation(url, returnUrl)`                            | `'return' \| 'external' \| 'load' \| 'block'` for one navigation.                          |
+| `createNavigationHandler(options)`                              | The web view's navigation decision, for embedding the checkout yourself.                   |
+| `buildCheckoutWebViewProps(platform)`                           | The web view settings the wallets need.                                                    |

@@ -5,14 +5,13 @@ import { createNavigationHandler } from '../src/webview/navigationHandler';
 
 const RETURN_URL = 'myapp://payment-return';
 
-function buildHandler(overrides: { statusResolver?: never } = {}) {
+function buildHandler() {
   const onComplete = vi.fn();
   const onExternal = vi.fn();
   const handler = createNavigationHandler({
     returnUrl: RETURN_URL,
     onComplete,
     onExternal,
-    ...overrides,
   });
 
   return { handler, onComplete, onExternal };
@@ -30,7 +29,7 @@ describe('createNavigationHandler', () => {
   it('completes on the return link and stops the navigation', () => {
     const { handler, onComplete } = buildHandler();
 
-    expect(handler('myapp://payment-return?status=paid&invoice_id=INV-3')).toBe(false);
+    expect(handler('myapp://payment-return?success=1&invoice_id=INV-3')).toBe(false);
     expect(onComplete).toHaveBeenCalledTimes(1);
     expect(onComplete.mock.calls[0]?.[0]).toMatchObject({
       status: CheckoutStatus.Paid,
@@ -41,9 +40,9 @@ describe('createNavigationHandler', () => {
   it('completes at most once, however often the return link arrives', () => {
     const { handler, onComplete } = buildHandler();
 
-    expect(handler('myapp://payment-return?status=paid')).toBe(false);
-    expect(handler('myapp://payment-return?status=not_paid')).toBe(false);
-    expect(handler('myapp://payment-return?status=paid')).toBe(false);
+    expect(handler('myapp://payment-return?success=1')).toBe(false);
+    expect(handler('myapp://payment-return?success=0')).toBe(false);
+    expect(handler('myapp://payment-return?success=1')).toBe(false);
 
     expect(onComplete).toHaveBeenCalledTimes(1);
     expect(onComplete.mock.calls[0]?.[0]).toMatchObject({ status: CheckoutStatus.Paid });
@@ -62,8 +61,21 @@ describe('createNavigationHandler', () => {
 
     handler('mybank://authorise/3ds/9');
 
-    expect(handler('myapp://payment-return?status=paid')).toBe(false);
+    expect(handler('myapp://payment-return?success=1')).toBe(false);
     expect(onComplete).toHaveBeenCalledTimes(1);
+  });
+
+  it("refuses the host app's other schemes without opening anything", () => {
+    const onExternal = vi.fn();
+    const handler = createNavigationHandler({
+      returnUrl: RETURN_URL,
+      ownSchemes: ['com.shop.app'],
+      onComplete: vi.fn(),
+      onExternal,
+    });
+
+    expect(handler('com.shop.app://orders/1/cancel')).toBe(false);
+    expect(onExternal).not.toHaveBeenCalled();
   });
 
   it('refuses a script scheme without completing or opening anything', () => {
@@ -83,7 +95,7 @@ describe('createNavigationHandler', () => {
       onExternal: vi.fn(),
     });
 
-    handler('myapp://payment-return?status=paid&invoice_id=INV-ATTACKER');
+    handler('myapp://payment-return?success=1&invoice_id=INV-ATTACKER');
 
     expect(onComplete.mock.calls[0]?.[0]).toMatchObject({ status: CheckoutStatus.NotPaid });
   });
@@ -97,22 +109,7 @@ describe('createNavigationHandler', () => {
       onExternal: vi.fn(),
     });
 
-    handler('myapp://payment-return?status=paid&invoice_id=INV-REAL');
-
-    expect(onComplete.mock.calls[0]?.[0]).toMatchObject({ status: CheckoutStatus.Paid });
-  });
-
-  it('uses a status resolver when one is supplied', () => {
-    const onComplete = vi.fn();
-    const handler = createNavigationHandler({
-      returnUrl: RETURN_URL,
-      statusResolver: (params) =>
-        params.outcome === 'settled' ? { status: CheckoutStatus.Paid } : undefined,
-      onComplete,
-      onExternal: vi.fn(),
-    });
-
-    handler('myapp://payment-return?outcome=settled');
+    handler('myapp://payment-return?success=1&invoice_id=INV-REAL');
 
     expect(onComplete.mock.calls[0]?.[0]).toMatchObject({ status: CheckoutStatus.Paid });
   });

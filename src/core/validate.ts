@@ -39,3 +39,48 @@ export function assertReturnUrl(returnUrl: string): string {
 
   return trimmed;
 }
+
+/**
+ * Checks the invoice id a checkout is bound to.
+ *
+ * Only `undefined` means "no invoice to bind to". Anything else that is not non-blank text
+ * or a finite number is refused — `null`, `''`, `NaN`, `true`, an object such as the whole
+ * init response — because taking it as "not given" would quietly accept a genuine paid link
+ * for any other invoice, and comparing against it would report every real payment as not
+ * paid. A setup error shows the mistake while the app is being built instead.
+ *
+ * A field missing from the server's JSON arrives as `undefined` and cannot be told apart
+ * from leaving the option out, so it is not caught here.
+ */
+export function assertExpectedInvoiceId(expectedInvoiceId: unknown): string | number | undefined {
+  if (expectedInvoiceId === undefined) {
+    return undefined;
+  }
+
+  if (typeof expectedInvoiceId === 'number' && Number.isFinite(expectedInvoiceId)) {
+    return expectedInvoiceId;
+  }
+
+  if (typeof expectedInvoiceId === 'string' && expectedInvoiceId.trim() !== '') {
+    return expectedInvoiceId;
+  }
+
+  throw new GetPayInConfigError(
+    'expectedInvoiceId must be the invoice_id your server received from init; ' +
+      `received ${describeValue(expectedInvoiceId)}. Leave it out only if you have no ` +
+      'invoice id at all.',
+  );
+}
+
+/** Names a bad value for an error message without serialising it (it may be circular). */
+function describeValue(value: unknown): string {
+  if (typeof value === 'string') {
+    return JSON.stringify(value);
+  }
+
+  if (value === null || typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+
+  return Array.isArray(value) ? 'an array' : `a value of type ${typeof value}`;
+}

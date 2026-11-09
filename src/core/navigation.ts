@@ -21,15 +21,21 @@ const BLOCKED_SCHEMES = new Set(['javascript', 'vbscript']);
  * `return` ends the checkout. `load` stays in the web view. `block` is refused outright.
  * `external` is handed to the phone so a bank app can take a 3-D Secure step and `tel:`
  * or `mailto:` still work; every acquirer has its own set of bank schemes, so that cannot
- * be an allow-list here, and the caller gates it on whether the phone has a handler at
- * all.
+ * be an allow-list here. The caller opens it directly (see `openExternalLink`), because
+ * asking the phone first answers no for every scheme the host app has not declared.
  *
- * The app's own scheme is blocked whenever it is not the return link. A 3-D Secure step
- * is hosted by the issuer, not by GetPayIn, so the page driving these navigations is not
- * one this package controls — and a page that could reach the app's own scheme would be
- * driving the host app's deep-link routes, which no checkout has any business doing.
+ * The app's own schemes are blocked whenever the link is not the return link: the return
+ * link's scheme, and `ownSchemes`, every other scheme the app answers to (see
+ * `hostAppSchemes`). A 3-D Secure step is hosted by the issuer, not by GetPayIn, so the
+ * page driving these navigations is not one this package controls — and a page that could
+ * reach one of the app's schemes would be driving the host app's deep-link routes, which
+ * no checkout has any business doing.
  */
-export function classifyNavigation(url: string, returnUrl: string): NavigationDecision {
+export function classifyNavigation(
+  url: string,
+  returnUrl: string,
+  ownSchemes: readonly string[] = [],
+): NavigationDecision {
   if (matchesReturnUrl(url, returnUrl)) {
     return 'return';
   }
@@ -48,5 +54,9 @@ export function classifyNavigation(url: string, returnUrl: string): NavigationDe
     return 'load';
   }
 
-  return parsed.scheme === parseUrl(returnUrl)?.scheme ? 'block' : 'external';
+  const isOwnScheme =
+    parsed.scheme === parseUrl(returnUrl)?.scheme ||
+    ownSchemes.some((scheme) => scheme.trim().toLowerCase() === parsed.scheme);
+
+  return isOwnScheme ? 'block' : 'external';
 }

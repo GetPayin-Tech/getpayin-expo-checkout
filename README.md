@@ -17,7 +17,7 @@ confirms it; the app only shows the checkout and reports what came back.
 ## Install
 
 ```bash
-npx expo install @getpayin/expo-checkout react-native-webview expo-web-browser expo-linking
+npx expo install @getpayin/expo-checkout react-native-webview react-native-safe-area-context expo-web-browser expo-linking expo-constants
 ```
 
 Then rebuild your app (`npx expo run:ios`, `npx expo run:android`, or a new EAS build).

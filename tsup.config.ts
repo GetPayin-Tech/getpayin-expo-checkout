@@ -12,7 +12,15 @@ export default defineConfig({
   sourcemap: true,
   clean: true,
   target: 'es2020',
-  external: ['react', 'react-native', 'react-native-webview', 'expo-web-browser', 'expo-linking'],
+  external: [
+    'react',
+    'react-native',
+    'react-native-safe-area-context',
+    'react-native-webview',
+    'expo-web-browser',
+    'expo-linking',
+    'expo-constants',
+  ],
   outExtension({ format }) {
     return { js: format === 'cjs' ? '.cjs' : '.js' };
   },

@@ -84,6 +84,27 @@ describe('GetPayInCheckout.open', () => {
     ).rejects.toBeInstanceOf(GetPayInConfigError);
   });
 
+  it.each([
+    ['ios', 'an empty', ''],
+    ['ios', 'a null', null as unknown as string],
+    ['android', 'an empty', ''],
+    ['android', 'a null', null as unknown as string],
+  ])(
+    'on %s, refuses %s expectedInvoiceId before opening anything',
+    async (os, _label, expectedInvoiceId) => {
+      platform.OS = os;
+      registerPresenter(presenter);
+
+      await expect(
+        GetPayInCheckout.open(CHECKOUT_URL, { returnUrl: RETURN_URL, expectedInvoiceId }),
+      ).rejects.toBeInstanceOf(GetPayInConfigError);
+
+      expect(presenter).not.toHaveBeenCalled();
+      expect(browser.openAuthSessionAsync).not.toHaveBeenCalled();
+      expect(GetPayInCheckout.busy).toBe(false);
+    },
+  );
+
   it('asks the mounted provider to present an in-app checkout', async () => {
     registerPresenter(presenter);
 
@@ -109,7 +130,7 @@ describe('GetPayInCheckout.open', () => {
     registerPresenter(presenter);
     browser.openAuthSessionAsync.mockResolvedValue({
       type: 'success',
-      url: `${RETURN_URL}?status=paid&invoice_id=INV-7`,
+      url: `${RETURN_URL}?success=1&invoice_id=INV-7`,
     });
 
     await expect(

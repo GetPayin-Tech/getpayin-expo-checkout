@@ -40,10 +40,10 @@ const REQUEST: CheckoutRequest = {
 
 let counter = 0;
 
-function uniqueReturn(status: string): string {
+function uniqueReturn(outcome: 'paid' | 'not_paid'): string {
   counter += 1;
 
-  return `${RETURN_URL}?status=${status}&invoice_id=B-${counter}`;
+  return `${RETURN_URL}?success=${outcome === 'paid' ? '1' : '0'}&invoice_id=B-${counter}`;
 }
 
 function emit(url: string): void {
@@ -164,28 +164,10 @@ describe('runBrowserCheckout', () => {
     expect(browser.dismissBrowser).toHaveBeenCalledTimes(1);
   });
 
-  it('passes a status resolver through to the return link reader', async () => {
-    browser.openAuthSessionAsync.mockResolvedValue({
-      type: 'success',
-      url: `${RETURN_URL}?outcome=settled`,
-    });
-
-    await expect(
-      runBrowserCheckout({
-        ...REQUEST,
-        options: {
-          returnUrl: RETURN_URL,
-          statusResolver: (params) =>
-            params.outcome === 'settled' ? { status: CheckoutStatus.Paid } : undefined,
-        },
-      }),
-    ).resolves.toMatchObject({ status: CheckoutStatus.Paid });
-  });
-
   it('ignores a sheet URL that is not the return link', async () => {
     browser.openAuthSessionAsync.mockResolvedValue({
       type: 'success',
-      url: 'https://pay.getpayin.com/checkout/abc?status=paid',
+      url: 'https://pay.getpayin.com/checkout/abc?success=1',
     });
 
     await expect(runBrowserCheckout(REQUEST)).resolves.toMatchObject({
@@ -196,7 +178,7 @@ describe('runBrowserCheckout', () => {
   it('refuses a return link naming an invoice other than the one opened', async () => {
     browser.openAuthSessionAsync.mockResolvedValue({
       type: 'success',
-      url: `${RETURN_URL}?status=paid&invoice_id=INV-ATTACKER`,
+      url: `${RETURN_URL}?success=1&invoice_id=INV-ATTACKER`,
     });
 
     await expect(

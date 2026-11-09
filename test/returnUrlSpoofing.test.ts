@@ -32,24 +32,31 @@ describe('a forged link must not pass as the return link', () => {
   });
 
   it('still accepts the genuine link with a query and fragment', () => {
-    expect(matchesReturnUrl('myapp://payment-return?status=paid#x', RETURN_URL)).toBe(true);
+    expect(matchesReturnUrl('myapp://payment-return?success=1#x', RETURN_URL)).toBe(true);
   });
 });
 
 describe('a forged link must not read as paid', () => {
   it.each([
-    ['an empty status', 'myapp://payment-return?status='],
-    ['a status of its own invention', 'myapp://payment-return?status=totally_fine'],
+    ['an empty success flag', 'myapp://payment-return?success='],
+    ['a success flag of its own invention', 'myapp://payment-return?success=yes'],
     ['no parameters at all', 'myapp://payment-return'],
-    ['a status buried in another key', 'myapp://payment-return?note=status%3Dpaid'],
-    ['the word paid as a value of an unknown key', 'myapp://payment-return?outcome=paid'],
-    ['a status array suffix', 'myapp://payment-return?status[]=paid'],
+    ['a flag buried in another key', 'myapp://payment-return?note=success%3D1'],
+    ['a status field GetPayIn never sends', 'myapp://payment-return?status=paid'],
+    ['a state field GetPayIn never sends', 'myapp://payment-return?state=approved'],
+    ['a success array suffix', 'myapp://payment-return?success[]=1'],
   ])('does not report %s as paid', (_label, url) => {
     expect(readCheckoutResult(url).status).not.toBe(CheckoutStatus.Paid);
   });
 
-  it('does not let a later repeated status overwrite the first', () => {
-    expect(readCheckoutResult('myapp://payment-return?status=not_paid&status=paid').status).toBe(
+  it('does not let a later repeated flag overwrite the first', () => {
+    expect(readCheckoutResult('myapp://payment-return?success=0&success=1').status).toBe(
+      CheckoutStatus.NotPaid,
+    );
+  });
+
+  it('does not let a status field overrule the success flag', () => {
+    expect(readCheckoutResult('myapp://payment-return?status=paid&success=0').status).toBe(
       CheckoutStatus.NotPaid,
     );
   });
