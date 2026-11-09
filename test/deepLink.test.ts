@@ -40,10 +40,10 @@ async function flush(): Promise<void> {
 
 let counter = 0;
 
-function uniqueReturn(status = 'paid'): string {
+function uniqueReturn(): string {
   counter += 1;
 
-  return `${RETURN_URL}?status=${status}&invoice_id=INV-${counter}`;
+  return `${RETURN_URL}?success=1&invoice_id=INV-${counter}`;
 }
 
 beforeEach(() => {

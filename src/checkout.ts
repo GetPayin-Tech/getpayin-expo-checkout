@@ -2,7 +2,7 @@ import { Platform } from 'react-native';
 
 import { resolvePresentation } from './core/presentation';
 import { SessionGuard } from './core/sessionGuard';
-import { assertCheckoutUrl, assertReturnUrl } from './core/validate';
+import { assertCheckoutUrl, assertExpectedInvoiceId, assertReturnUrl } from './core/validate';
 import { GetPayInProviderMissingError } from './errors';
 import { runBrowserCheckout } from './sessions/browserSession';
 import { getPresenter } from './sessions/registry';
@@ -41,7 +41,8 @@ export const GetPayInCheckout = {
    * open an app with a made-up return link — so confirm the `invoice.paid` webhook on your
    * server before you deliver the order.
    *
-   * @throws {GetPayInConfigError} when `checkoutUrl` or `options.returnUrl` is unusable.
+   * @throws {GetPayInConfigError} when `checkoutUrl` or `options.returnUrl` is unusable, or
+   *   `options.expectedInvoiceId` is given but empty, `null` or not a finite number.
    * @throws {GetPayInProviderMissingError} when an in-app checkout has no provider mounted.
    * @throws {GetPayInSessionBusyError} when another checkout is still open.
    *
@@ -49,6 +50,8 @@ export const GetPayInCheckout = {
    * `catch` covers them all.
    */
   async open(checkoutUrl: string, options: OpenCheckoutOptions): Promise<CheckoutResult> {
+    assertExpectedInvoiceId(options.expectedInvoiceId);
+
     const request: CheckoutRequest = {
       checkoutUrl: assertCheckoutUrl(checkoutUrl),
       options: { ...options, returnUrl: assertReturnUrl(options.returnUrl) },

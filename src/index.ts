@@ -6,7 +6,7 @@ export { GetPayInCheckoutView } from './components/GetPayInCheckoutView';
 export { createPaymentReturnRedirect } from './nativeIntent';
 export type { NativeIntentEvent } from './nativeIntent';
 
-export { CheckoutStatus } from './types';
+export { CheckoutResultCode, CheckoutStatus } from './types';
 
 export type {
   CheckoutOptions,
@@ -14,13 +14,12 @@ export type {
   CheckoutPresenter,
   CheckoutRequest,
   CheckoutResult,
+  CheckoutResultCodeName,
   CheckoutStatusName,
   GetPayInCheckoutViewProps,
   GetPayInProviderProps,
   OpenCheckoutOptions,
   PlatformName,
-  ReturnUrlParams,
-  StatusResolver,
 } from './types';
 
 export {
@@ -34,8 +33,9 @@ export { readCheckoutResult, resolveReturn, matchesReturnUrl } from './core/retu
 export type { ReturnResolution } from './core/returnUrl';
 export { resolvePresentation } from './core/presentation';
 export { classifyNavigation } from './core/navigation';
-export type { NavigationDecision } from './core/navigation';
+export type { NavigationContext, NavigationDecision } from './core/navigation';
 export { buildCheckoutWebViewProps } from './webview/platformProps';
 export type { CheckoutWebViewPlatformProps } from './webview/platformProps';
 export { createNavigationHandler } from './webview/navigationHandler';
-export type { NavigationHandlerOptions } from './webview/navigationHandler';
+export type { NavigationHandlerOptions, NavigationRequest } from './webview/navigationHandler';
+export { hostAppSchemes, schemesFromAppConfig } from './webview/appSchemes';

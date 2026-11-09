@@ -1,4 +1,5 @@
 import { GetPayInConfigError } from '../errors';
+import { invoiceIdFrom } from './invoiceId';
 import { parseUrl } from './url';
 
 /**
@@ -38,4 +39,52 @@ export function assertReturnUrl(returnUrl: string): string {
   }
 
   return trimmed;
+}
+
+/**
+ * Checks the invoice id a checkout is bound to, and hands back the text it is compared as.
+ *
+ * The normalised value is what is returned, so the comparison inside `resolveReturn` is
+ * made on what was validated rather than on the raw option: the server reports the id as a
+ * number and the return link carries it as text, and comparing those as they arrive would
+ * turn every paid checkout into `not_paid`.
+ *
+ * Only `undefined` means "no invoice to bind to". Anything else that is not non-blank text
+ * or a safe integer is refused — `null`, `''`, `NaN`, `true`, `1e21`, an object such as the
+ * whole init response — because taking it as "not given" would quietly accept a genuine
+ * paid link for any other invoice, and comparing against it would report every real payment
+ * as not paid. A setup error shows the mistake while the app is being built instead.
+ *
+ * A field missing from the server's JSON arrives as `undefined` and cannot be told apart
+ * from leaving the option out, so it is not caught here.
+ */
+export function assertExpectedInvoiceId(expectedInvoiceId: unknown): string | undefined {
+  if (expectedInvoiceId === undefined) {
+    return undefined;
+  }
+
+  const invoiceId = invoiceIdFrom(expectedInvoiceId);
+
+  if (invoiceId !== undefined) {
+    return invoiceId;
+  }
+
+  throw new GetPayInConfigError(
+    'expectedInvoiceId must be the invoice_id your server received from init, as text or a ' +
+      `safe integer; received ${describeValue(expectedInvoiceId)}. Leave it out only if you ` +
+      'have no invoice id at all.',
+  );
+}
+
+/** Names a bad value for an error message without serialising it (it may be circular). */
+function describeValue(value: unknown): string {
+  if (typeof value === 'string') {
+    return JSON.stringify(value);
+  }
+
+  if (value === null || typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+
+  return Array.isArray(value) ? 'an array' : `a value of type ${typeof value}`;
 }

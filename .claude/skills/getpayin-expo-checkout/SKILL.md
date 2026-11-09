@@ -12,7 +12,7 @@ reports what came back. It holds no secret and signs nothing.
 
 **The result in the app is never proof of payment.** The app's return scheme is public, so
 anything on the phone can open the app with
-`myapp://payment-return?status=paid&invoice_id=anything`.
+`myapp://payment-return?success=1&invoice_id=anything`.
 
 So when writing integration code: `status === 'paid'` may update the UI, but only the
 server's `invoice.paid` webhook may unlock, ship, credit or grant anything. If the user
@@ -60,7 +60,7 @@ export const redirectSystemPath = createPaymentReturnRedirect('myapp://payment-r
 When integrating:
 
 1. **Install and rebuild.**
-   `npx expo install @getpayin/expo-checkout react-native-webview expo-web-browser expo-linking`,
+   `npx expo install @getpayin/expo-checkout react-native-webview react-native-safe-area-context expo-web-browser expo-linking expo-constants`,
    then `npx expo run:ios` / `run:android` or an EAS build. The web view is native code,
    so a JS reload is not enough.
 2. **Check the three places the scheme must agree:** `expo.scheme` in `app.json`, the
@@ -120,7 +120,7 @@ Match the symptom first; most of these failures are silent.
 | `CheckoutStatus`                                       | `{ Paid, NotPaid, Cancelled }`.                                          |
 
 Options: `returnUrl` (required), `expectedInvoiceId`, `googlePayInApp`, `title`,
-`headerShown`, `statusResolver`, `presentation`.
+`closeLabel`, `loadErrorMessage`, `headerShown`, `presentation`.
 
 Errors, all extending `GetPayInCheckoutError`: `GetPayInConfigError`,
 `GetPayInProviderMissingError`, `GetPayInSessionBusyError`.

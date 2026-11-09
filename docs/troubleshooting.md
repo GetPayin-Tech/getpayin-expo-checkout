@@ -87,13 +87,26 @@ checkout was opened for. Either something forged the link, or your code passed t
 
 ## A 3-D Secure bank app does not open
 
-On iOS, opening another app needs its scheme in
-`ios.infoPlist.LSApplicationQueriesSchemes`. See [Setup](setup.md#ios). Ask GetPayIn
-support which schemes your acquirer uses.
+The package opens the bank's link directly, with no scheme to declare. If nothing opens,
+the bank's app is most likely not installed on that phone. The payer is shown
+`linkErrorMessage` and the top bar appears so they can close the checkout; they can finish
+the step on the bank's web page if it offers one.
 
-The package deliberately refuses two kinds of link rather than handing them to the phone:
-script schemes (`javascript:`, `vbscript:`) and your own app's scheme when it is not the
-return link. If a legitimate flow needs one of those, it is a bug — please report it.
+On Android, some bank pages use `intent://` links, which a web view cannot follow the way
+Chrome does. If a bank's step works in the browser sheet but not in your app's own screen,
+please report it with the bank's name.
+
+The package deliberately refuses some links rather than handing them to the phone:
+
+1. Script schemes: `javascript:`, `vbscript:`.
+2. Your own app's schemes, when the link is not the return link. That is every scheme your
+   app answers to, not only the return link's — see [Security model](security.md).
+3. Schemes with no part in paying: `market:`, `itms-apps:`, `itms-services:`, `sms:`,
+   `smsto:`, `mms:`, `shortcuts:`, `content:`, `android-app:`.
+4. Anything a frame inside the checkout page asks for, other than ordinary web content.
+
+`tel:`, `mailto:` and `intent:` are allowed. If a legitimate flow needs one of the refused
+ones, it is a bug — please report it with the bank's name.
 
 ## Reporting a bug
 

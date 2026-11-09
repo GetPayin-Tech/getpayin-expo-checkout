@@ -16,12 +16,18 @@ two; they carry the reasoning.
 
 ## Layering
 
-| Layer      | Directory                                        | May import                                      |
-| ---------- | ------------------------------------------------ | ----------------------------------------------- |
-| Pure logic | `src/core`, `src/webview`, `src/nativeIntent.ts` | nothing outside itself                          |
-| Sessions   | `src/sessions`                                   | `expo-web-browser`, `expo-linking`              |
-| React      | `src/components`                                 | `react`, `react-native`, `react-native-webview` |
-| Facade     | `src/checkout.ts`                                | `Platform` only                                 |
+| Layer      | Directory                         | May import                                      |
+| ---------- | --------------------------------- | ----------------------------------------------- |
+| Pure logic | `src/core`, `src/nativeIntent.ts` | nothing outside itself                          |
+| Web view   | `src/webview`                     | `src/core`, plus the two exceptions below       |
+| Sessions   | `src/sessions`                    | `expo-web-browser`, `expo-linking`              |
+| React      | `src/components`                  | `react`, `react-native`, `react-native-webview` |
+| Facade     | `src/checkout.ts`                 | `Platform` only                                 |
+
+The two exceptions in `src/webview` are `externalLink.ts` (`Linking` from `react-native`)
+and `appSchemes.ts` (`expo-constants`). Each is one call wrapping a rule, each is mocked in
+the suite, and both stay there rather than in a component so the rule keeps its tests. Do
+not add a third without a reason that good.
 
 Keep that direction. Moving a rule out of `src/core` or `src/webview` into a component
 makes it untestable, and these are rules that fail silently on a phone rather than
@@ -57,8 +63,9 @@ around it — the gate is the point.
 4. No `iframe: true`.
 5. `originWhitelist`, `enableApplePay` and `paymentRequestEnabled` must all still be
    present.
-6. `react-native`, `react-native-webview`, `expo-web-browser` and `expo-linking` stay
-   external.
+6. `react-native`, `react-native-safe-area-context`, `react-native-webview`,
+   `expo-web-browser`, `expo-linking` and `expo-constants` stay external, so the host app's
+   single copy is the one used.
 
 ## Invariants only review catches
 
@@ -71,13 +78,26 @@ around it — the gate is the point.
    letting a byte-identical link settle a second genuine checkout.
 3. **`expectedInvoiceId` downgrades only `paid`.** Rewriting a `not_paid` or `cancelled`
    would lose the reason the payer was given.
-4. **A script scheme, and the app's own scheme, never reach `Linking.openURL`.**
-   `classifyNavigation` must return `block` for both. `external` hands a URL to the phone
-   and the page — which may be issuer-hosted, not GetPayIn's — is what chose it.
-5. **The navigation handler is keyed to the session, not the callbacks.** It completes at
+4. **A script scheme, any scheme the app answers to, and anything with no part in paying
+   never reach `Linking.openURL`.** `classifyNavigation` must return `block` for all three;
+   the app's schemes come from `hostAppSchemes()` (app config schemes, an Android intent
+   filter's, `CFBundleURLTypes`, iOS bundle identifier, Android package, `exp+<slug>`), and
+   `REFUSED_APP_SCHEMES` holds the rest. `external` hands a URL to the phone and the page —
+   which may be issuer-hosted, not GetPayIn's — is what chose it.
+5. **A frame inside the checkout page can only ever `load`.** `isTopFrame` is required, not
+   defaulted: a 3-D Secure page knows the real invoice id, so an `<iframe>` aimed at the
+   return link would report a payment nobody made, and `expectedInvoiceId` is no defence.
+6. **Both sides of an invoice comparison go through `core/invoiceId.ts`.** The server sends
+   a number and the link carries text; comparing them as they arrive reports every paid
+   checkout as `not_paid`.
+7. **A payer never sees developer text.** `buildCheckoutSource`'s `error` names an option
+   and its value — it goes to `onLoadError`'s second argument, and the payer gets
+   `loadErrorMessage`. Blank option text falls back through `core/text.ts`, because
+   `t('key')` with a missing key returns `''` and `??` would keep it.
+8. **The navigation handler is keyed to the session, not the callbacks.** It completes at
    most once; rebuilding it on a fresh inline `onComplete` resets that latch and reports one
    payment twice. Rebuilding it only when the checkout changes is required.
-6. **A failed load always shows a way out.** Otherwise the `open()` promise never settles
+9. **A failed load always shows a way out.** Otherwise the `open()` promise never settles
    and `SessionGuard` reports busy for the rest of the process.
 
 ## House style
@@ -122,9 +142,9 @@ lines** and 95% of branches. A new pure function needs tests in the same change.
 
 ## Testing notes
 
-- The suite runs in Node. `react-native`, `expo-web-browser` and `expo-linking` are mocked
-  with `vi.hoisted` + `vi.mock`; see `test/checkout.test.ts` and
-  `test/browserSession.test.ts`.
+- The suite runs in Node. `react-native`, `expo-constants`, `expo-web-browser` and
+  `expo-linking` are mocked with `vi.hoisted` + `vi.mock`; see `test/checkout.test.ts`,
+  `test/appSchemes.test.ts` and `test/browserSession.test.ts`.
 - There are no component render tests. React 19 deprecated `react-test-renderer`, so the
   logic was moved into `webview/navigationHandler.ts` and `sessions/sessionHost.ts`
   instead. Put new component logic there rather than adding a render harness.

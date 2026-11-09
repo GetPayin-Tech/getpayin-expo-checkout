@@ -70,8 +70,8 @@ export function isSameTarget(a: string, b: string): boolean {
   );
 }
 
-/** Decodes one query value, leaving a malformed escape sequence as it was. */
-function decodeValue(value: string): string {
+/** Decodes one query name or value, leaving a malformed escape sequence as it was. */
+export function decodeQueryComponent(value: string): string {
   const withSpaces = value.replace(/\+/g, ' ');
 
   try {
@@ -81,13 +81,9 @@ function decodeValue(value: string): string {
   }
 }
 
-/**
- * Reads a query string into a map keyed by {@link normalizeToken}, so `invoice_id`,
- * `invoiceId` and `INVOICE-ID` all arrive under the same key. The first occurrence of a
- * key wins.
- */
-export function parseQuery(query: string): Record<string, string> {
-  const params: Record<string, string> = {};
+/** Splits a query string into its raw, undecoded name and value pairs, in order. */
+function queryPairs(query: string): [string, string][] {
+  const pairs: [string, string][] = [];
 
   for (const pair of query.split('&')) {
     if (pair === '') {
@@ -95,15 +91,52 @@ export function parseQuery(query: string): Record<string, string> {
     }
 
     const separatorIndex = pair.indexOf('=');
-    const rawKey = separatorIndex === -1 ? pair : pair.slice(0, separatorIndex);
-    const rawValue = separatorIndex === -1 ? '' : pair.slice(separatorIndex + 1);
-    const key = normalizeToken(decodeValue(rawKey));
 
-    if (key === '' || key in params) {
-      continue;
+    pairs.push(
+      separatorIndex === -1
+        ? [pair, '']
+        : [pair.slice(0, separatorIndex), pair.slice(separatorIndex + 1)],
+    );
+  }
+
+  return pairs;
+}
+
+/**
+ * Every field name in a query string exactly as sent, in order and undecoded.
+ *
+ * The return-link reader refuses a link carrying a name that only a looser reader would
+ * take for one of its own fields — `Success`, `invoiceId`, `%73uccess` — so it has to see
+ * the names the way the server checking the link's signature sees them, which is before
+ * any decoding or case folding.
+ */
+export function rawQueryNames(query: string): string[] {
+  return queryPairs(query).map(([name]) => name);
+}
+
+/**
+ * Reads a query string into every value given for each name, in order.
+ *
+ * Names are decoded but otherwise kept exactly as sent, so `Success` is not `success`. A
+ * return link has to be read the way the server that checks its signature reads it: if
+ * the two could disagree about which value a field holds, a link could be signed for one
+ * invoice and reported for another. Every value is kept so the caller can refuse a name
+ * that appears more than once instead of picking one copy.
+ *
+ * A `Map`, not an object, so a name such as `__proto__` or `constructor` is just a name.
+ */
+export function readQuery(query: string): Map<string, string[]> {
+  const params = new Map<string, string[]>();
+
+  for (const [rawName, rawValue] of queryPairs(query)) {
+    const name = decodeQueryComponent(rawName);
+    const values = params.get(name);
+
+    if (values === undefined) {
+      params.set(name, [decodeQueryComponent(rawValue)]);
+    } else {
+      values.push(decodeQueryComponent(rawValue));
     }
-
-    params[key] = decodeValue(rawValue);
   }
 
   return params;
