@@ -33,6 +33,11 @@ async function pay(order) {
       await myApi.confirmPayment(result.invoiceId);
       break;
     case 'not_paid':
+      // A code means the package refused the link, not that the card was declined: the
+      // payer may have paid, so check the invoice rather than asking them to pay again.
+      if (result.code) {
+        await myApi.checkInvoice(invoiceId);
+      }
       showMessage(result.message ?? 'The payment did not go through.');
       break;
     case 'cancelled':
@@ -49,11 +54,32 @@ answers HTTP 403.
 | `status`    | What it means                                                                     | What to do                            |
 | ----------- | --------------------------------------------------------------------------------- | ------------------------------------- |
 | `paid`      | The return link said the payment went through.                                    | Confirm on your server, then deliver. |
-| `not_paid`  | Declined, failed, or a return link that could not be trusted. `message` says why. | Show `message`. Offer a retry.        |
+| `not_paid`  | Declined, failed, or a return link that could not be trusted. `message` says why. | Show `message`. See `code` below.     |
 | `cancelled` | The payer closed the checkout or the browser sheet.                               | Nothing. Leave the cart as it was.    |
 
-`invoiceId` is present when the return link carried one. `returnUrl` is the raw link the
-result came from, which is useful in a bug report.
+`cancelled` only ever comes from the payer closing the screen. A hosted checkout the payer
+abandons and returns from reports `not_paid`.
+
+`invoiceId` is present when the return link carried one. `invoiceStatus` is the invoice
+state the link reported (`PAID`, `UNPAID`, `PARTIALLY_PAID`, `AUTHORIZED`), and only `PAID`
+is reported as `paid`. `returnUrl` is the raw link the result came from, which is useful in
+a bug report.
+
+### `code` on a `not_paid`
+
+A `not_paid` the package decided for itself carries a `code`; a genuine decline carries
+none. It is the stable value to branch on and to look a message of your own up by, where
+`message` is text for the payer and changes with your app's language.
+
+| `code`                      | What happened                                           | What to do                                                           |
+| --------------------------- | ------------------------------------------------------- | -------------------------------------------------------------------- |
+| absent                      | The checkout declined or failed the payment.            | Show `message`. Offer a retry.                                       |
+| `unreadable_return_link`    | The link's own fields could not be read.                | Check the invoice on your server. Alert on this one — it is a bug.   |
+| `wrong_invoice`             | The link named another invoice.                         | Check the invoice on your server. Do not retry blindly.              |
+| `unexpected_invoice_status` | `success=1` with an `invoice_status` other than `PAID`. | Check the invoice on your server. An authorised invoice is not paid. |
+
+The payer may well have paid in all three of those, so none of them is a reason to ask for
+payment again before the invoice has been checked on your server.
 
 ## Confirming it
 
@@ -176,23 +202,27 @@ Two things to know when you do this:
 ## What the result is read from
 
 GetPayIn's return link carries `success`, `invoice_id`, `invoice_status`, `message` and
-`signature`. The package reads three of them:
+`signature`. The package reads four of them:
 
 1. `success`: `1` is `paid` and `0` is `not_paid`. Any other value, or no value, is
-   `not_paid` with a message saying the link could not be read.
+   `not_paid` with `code: 'unreadable_return_link'`.
 2. `invoice_id` becomes `invoiceId`.
-3. `message` becomes `message`.
+3. `invoice_status` becomes `invoiceStatus`. A `paid` carrying anything but `PAID` is
+   reported as `not_paid` with `code: 'unexpected_invoice_status'`.
+4. `message` becomes `message`.
 
-Names must match exactly (`Success` is not `success`), values are taken as sent, and a link
-that repeats any of these three fields is reported as `not_paid`. Nothing else on the link
-is read, so a field GetPayIn does not send, such as `status=paid`, cannot change the
-outcome. A forged link can still say `success=1`, which is why your server confirms the
-payment.
+Names must match exactly, values are taken as sent, and the link is reported as
+`not_paid` with `code: 'unreadable_return_link'` when it repeats **any** field or carries a
+name only a looser reader would take for one of those four — `Success`, `invoiceId`,
+`%73uccess`. Nothing else on the link is read, so a field GetPayIn does not send, such as
+`status=paid`, cannot change the outcome. A forged link can still say `success=1`, which is
+why your server confirms the payment.
 
 The whole link stays in `returnUrl`, so your server can check its `signature`. If it does,
-read the values from the link the same strict way: exact names, and refuse a field that
-appears twice. A looser reader could take a different `invoice_id` from the one the
-signature covers, and accept a genuine link for one invoice as payment for another.
+read the values from the link the same strict way: exact names, no case folding, no
+decoding of names, and refuse a field that appears twice — `signature` included. A looser
+reader could take a different `invoice_id` from the one the signature covers, and accept a
+genuine link for one invoice as payment for another.
 
 A valid signature is still not enough on its own. The signature covers `success`,
 `invoice_id`, `invoice_status` and `message` joined with no separator, so a genuine link

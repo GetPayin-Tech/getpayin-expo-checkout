@@ -2,12 +2,30 @@ import { classifyNavigation } from '../core/navigation';
 import { resolveReturn } from '../core/returnUrl';
 import type { CheckoutResult } from '../types';
 
+/**
+ * One navigation request, as `react-native-webview` reports it to
+ * `onShouldStartLoadWithRequest`.
+ *
+ * `isTopFrame` has no default on purpose. It decides whether a frame inside the checkout
+ * page can end the checkout, and a value guessed here would be guessed in favour of the
+ * page.
+ */
+export interface NavigationRequest {
+  readonly url: string;
+  readonly isTopFrame: boolean;
+}
+
 /** What a navigation handler needs in order to act on a navigation request. */
 export interface NavigationHandlerOptions {
   readonly returnUrl: string;
   readonly expectedInvoiceId?: string | number;
-  /** Every other scheme the host app answers to; refused like the return link's scheme. */
-  readonly ownSchemes?: readonly string[];
+
+  /**
+   * Every other scheme the host app answers to; refused like the return link's scheme.
+   * Build it with `hostAppSchemes()`, which reads them from the app config.
+   */
+  readonly ownSchemes: readonly string[];
+
   readonly onComplete: (result: CheckoutResult) => void;
   readonly onExternal: (url: string) => void;
 }
@@ -26,17 +44,21 @@ export interface NavigationHandlerOptions {
  */
 export function createNavigationHandler(
   options: NavigationHandlerOptions,
-): (url: string) => boolean {
+): (request: NavigationRequest) => boolean {
   let completed = false;
 
-  return (url: string): boolean => {
-    const decision = classifyNavigation(url, options.returnUrl, options.ownSchemes);
+  return (request: NavigationRequest): boolean => {
+    const decision = classifyNavigation(request.url, {
+      returnUrl: options.returnUrl,
+      ownSchemes: options.ownSchemes,
+      isTopFrame: request.isTopFrame,
+    });
 
     if (decision === 'return') {
       if (!completed) {
         completed = true;
         options.onComplete(
-          resolveReturn(url, {
+          resolveReturn(request.url, {
             ...(options.expectedInvoiceId === undefined
               ? {}
               : { expectedInvoiceId: options.expectedInvoiceId }),
@@ -48,7 +70,7 @@ export function createNavigationHandler(
     }
 
     if (decision === 'external') {
-      options.onExternal(url);
+      options.onExternal(request.url);
 
       return false;
     }

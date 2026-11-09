@@ -26,12 +26,19 @@ GetPayInCheckout.open()            src/checkout.ts        imports Platform, noth
                           └─ resolveReturn()     pure
 ```
 
-| Layer      | Directory                                        | May import                                      |
-| ---------- | ------------------------------------------------ | ----------------------------------------------- |
-| Pure logic | `src/core`, `src/webview`, `src/nativeIntent.ts` | nothing outside itself                          |
-| Sessions   | `src/sessions`                                   | `expo-web-browser`, `expo-linking`              |
-| React      | `src/components`                                 | `react`, `react-native`, `react-native-webview` |
-| Facade     | `src/checkout.ts`                                | `Platform` only                                 |
+| Layer      | Directory                         | May import                                      |
+| ---------- | --------------------------------- | ----------------------------------------------- |
+| Pure logic | `src/core`, `src/nativeIntent.ts` | nothing outside itself                          |
+| Web view   | `src/webview`                     | `src/core`, and the two modules named below     |
+| Sessions   | `src/sessions`                    | `expo-web-browser`, `expo-linking`              |
+| React      | `src/components`                  | `react`, `react-native`, `react-native-webview` |
+| Facade     | `src/checkout.ts`                 | `Platform` only                                 |
+
+Two modules in `src/webview` reach a native module, and they are the only ones:
+`externalLink.ts` imports `Linking` from `react-native`, and `appSchemes.ts` imports
+`expo-constants`. Both are a single call wrapping a rule, both are mocked in the suite, and
+both stay here rather than in a component so the rule around the call keeps its tests.
+Nothing else in `src/core` or `src/webview` may import anything outside itself.
 
 Keep that direction. A rule that moves out of `src/core` or `src/webview` and into a
 component stops being testable, and these are rules that fail silently on a phone.

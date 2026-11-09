@@ -69,6 +69,31 @@ describe('a hostile navigation must not reach the phone as an app link', () => {
     'file:///etc/passwd',
     'data:text/html,<script>alert(1)</script>',
   ])('keeps %s inside the web view rather than handing it to the phone', (url) => {
-    expect(classifyNavigation(url, RETURN_URL)).not.toBe('external');
+    expect(
+      classifyNavigation(url, { returnUrl: RETURN_URL, ownSchemes: [], isTopFrame: true }),
+    ).not.toBe('external');
   });
+
+  it.each([
+    'market://details?id=evil.app',
+    'sms:+15550100?body=TRANSFER%20500',
+    'shortcuts://run-shortcut?name=Pay',
+  ])('refuses %s, which a browser would not open from the same page either', (url) => {
+    expect(
+      classifyNavigation(url, { returnUrl: RETURN_URL, ownSchemes: [], isTopFrame: true }),
+    ).toBe('block');
+  });
+
+  /*
+   * The 3-D Secure page is the issuer's, not GetPayIn's, and it knows the real invoice id,
+   * so a frame it embeds must not be able to end the checkout or reach another app.
+   */
+  it.each(['myapp://payment-return?success=1&invoice_id=4512', 'mybank://authorise/3ds/9'])(
+    'refuses %s when a frame inside the page asks for it',
+    (url) => {
+      expect(
+        classifyNavigation(url, { returnUrl: RETURN_URL, ownSchemes: [], isTopFrame: false }),
+      ).toBe('block');
+    },
+  );
 });

@@ -10,6 +10,7 @@ describe('buildCheckoutSource', () => {
     expect(buildCheckoutSource(` ${CHECKOUT_URL} `, RETURN_URL, 4512)).toEqual({
       uri: CHECKOUT_URL,
       returnUrl: RETURN_URL,
+      expectedInvoiceId: '4512',
     });
   });
 
@@ -32,5 +33,29 @@ describe('buildCheckoutSource', () => {
 
   it('names the bad invoice id in the error', () => {
     expect(buildCheckoutSource(CHECKOUT_URL, RETURN_URL, null).error).toMatch(/expectedInvoiceId/);
+  });
+
+  it('hands back no invoice id when none was given', () => {
+    expect(
+      buildCheckoutSource(CHECKOUT_URL, RETURN_URL, undefined).expectedInvoiceId,
+    ).toBeUndefined();
+  });
+
+  /*
+   * `checkoutUrl` arrives from a server at runtime, so an undefined one is a real shape.
+   * It throws a TypeError out of `trim()` rather than a GetPayInCheckoutError, and that
+   * must still be a value the view can report rather than a thrown render.
+   */
+  it('reports a failure that is not a checkout error of ours', () => {
+    const source = buildCheckoutSource(undefined as unknown as string, RETURN_URL, 4512);
+
+    expect(source.uri).toBe('about:blank');
+    expect(source.error).toMatch(/TypeError/);
+  });
+
+  it('hands back the id as it will be compared, not as it was passed', () => {
+    expect(buildCheckoutSource(CHECKOUT_URL, RETURN_URL, ' 004512 ').expectedInvoiceId).toBe(
+      '4512',
+    );
   });
 });

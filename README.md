@@ -49,7 +49,7 @@ const { checkoutUrl, invoiceId } = await myApi.createPayment(order);
 
 const result = await GetPayInCheckout.open(checkoutUrl, {
   returnUrl: 'myapp://payment-return', // must match your Mobile App Return Scheme
-  expectedInvoiceId: invoiceId, // ties the result to this checkout — always pass it
+  expectedInvoiceId: invoiceId, // ties the result to this checkout — pass it whenever you have one
   googlePayInApp: false, // set true only after Google approves your app
 });
 
@@ -58,7 +58,11 @@ if (result.status === 'paid') {
 }
 ```
 
-`result.status` is `paid`, `not_paid` or `cancelled`.
+`result.status` is `paid`, `not_paid` or `cancelled`. Leave `expectedInvoiceId` out rather
+than passing `null` or an empty value, which are refused with `GetPayInConfigError` — taken
+as "not given" they would accept a paid link for any invoice. A `not_paid` the package
+decided for itself carries a `code`, which a genuine decline does not; see
+[Taking payments](docs/taking-payments.md#code-on-a-not_paid).
 
 > **The result in the app is not proof of payment.** Your return scheme is public, so
 > anything on the phone can forge that link. Confirm the `invoice.paid` webhook on your

@@ -3,6 +3,7 @@ import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 import type { WebViewNavigation } from 'react-native-webview';
 
+import { fallbackText } from '../core/text';
 import type { GetPayInCheckoutViewProps } from '../types';
 import { hostAppSchemes } from '../webview/appSchemes';
 import { buildCheckoutSource } from '../webview/checkoutSource';
@@ -12,10 +13,18 @@ import { createNavigationHandler } from '../webview/navigationHandler';
 import { buildCheckoutWebViewProps } from '../webview/platformProps';
 
 const LOAD_FAILED = 'The checkout could not be loaded. Check the connection and try again.';
+const LINK_FAILED =
+  'The checkout needed another app on this phone, which could not be opened. Nothing has ' +
+  'been charged.';
 
-interface CheckoutSession extends CheckoutSource {
-  readonly expectedInvoiceId: GetPayInCheckoutViewProps['expectedInvoiceId'];
-}
+/**
+ * The argument `onShouldStartLoadWithRequest` is called with.
+ *
+ * `react-native-webview` names this `ShouldStartLoadRequest` but does not re-export it from
+ * the package root, and `WebViewNavigation` alone is missing `isTopFrame` — the field that
+ * says whether the page or a frame inside it asked for the navigation.
+ */
+type ShouldStartLoadRequest = WebViewNavigation & { readonly isTopFrame: boolean };
 
 /**
  * The hosted checkout drawn in the app's own screen.
@@ -31,22 +40,30 @@ interface CheckoutSession extends CheckoutSource {
  * runtime, and a bad one should not take the screen down with it.
  */
 export function GetPayInCheckoutView(props: GetPayInCheckoutViewProps): React.JSX.Element {
-  const { checkoutUrl, returnUrl, expectedInvoiceId, loadErrorMessage, onComplete, onLoadError } =
-    props;
+  const {
+    checkoutUrl,
+    returnUrl,
+    expectedInvoiceId,
+    loadErrorMessage,
+    linkErrorMessage,
+    onComplete,
+    onLoadError,
+  } = props;
   const [loading, setLoading] = useState(true);
 
-  const callbacks = useRef({ onComplete, onLoadError });
+  /*
+   * Everything the navigation handler reads when a navigation happens rather than while
+   * rendering, so a fresh inline callback or a changed message does not rebuild it.
+   */
+  const latest = useRef({ onComplete, onLoadError, loadErrorMessage, linkErrorMessage });
 
   useEffect(() => {
-    callbacks.current = { onComplete, onLoadError };
-  }, [onComplete, onLoadError]);
+    latest.current = { onComplete, onLoadError, loadErrorMessage, linkErrorMessage };
+  }, [onComplete, onLoadError, loadErrorMessage, linkErrorMessage]);
 
   /** One object per checkout, which is what the navigation handler is keyed to. */
-  const session = useMemo<CheckoutSession>(
-    () => ({
-      ...buildCheckoutSource(checkoutUrl, returnUrl, expectedInvoiceId),
-      expectedInvoiceId,
-    }),
+  const session = useMemo<CheckoutSource>(
+    () => buildCheckoutSource(checkoutUrl, returnUrl, expectedInvoiceId),
     [checkoutUrl, returnUrl, expectedInvoiceId],
   );
 
@@ -55,7 +72,10 @@ export function GetPayInCheckoutView(props: GetPayInCheckoutViewProps): React.JS
 
   useEffect(() => {
     if (session.error !== undefined) {
-      callbacks.current.onLoadError?.(session.error);
+      latest.current.onLoadError?.(
+        fallbackText(latest.current.loadErrorMessage, LOAD_FAILED),
+        session.error,
+      );
     }
   }, [session]);
 
@@ -69,11 +89,11 @@ export function GetPayInCheckoutView(props: GetPayInCheckoutViewProps): React.JS
    * it through a ref, which is read when a navigation happens rather than while rendering.
    */
   const active = useRef<
-    { session: CheckoutSession; handler: (url: string) => boolean } | undefined
+    { session: CheckoutSource; handler: (request: ShouldStartLoadRequest) => boolean } | undefined
   >(undefined);
 
   const handleNavigation = useCallback(
-    (request: WebViewNavigation) => {
+    (request: ShouldStartLoadRequest) => {
       const current = active.current;
 
       if (current === undefined || current.session !== session) {
@@ -83,16 +103,22 @@ export function GetPayInCheckoutView(props: GetPayInCheckoutViewProps): React.JS
             ? {}
             : { expectedInvoiceId: session.expectedInvoiceId }),
           ownSchemes,
-          onComplete: (result) => callbacks.current.onComplete(result),
-          onExternal: openExternalLink,
+          onComplete: (result) => latest.current.onComplete(result),
+          onExternal: (url) =>
+            openExternalLink(url, () =>
+              latest.current.onLoadError?.(
+                fallbackText(latest.current.linkErrorMessage, LINK_FAILED),
+                `The phone could not open ${url}.`,
+              ),
+            ),
         });
 
         active.current = { session, handler };
 
-        return handler(request.url);
+        return handler(request);
       }
 
-      return current.handler(request.url);
+      return current.handler(request);
     },
     [session, ownSchemes],
   );
@@ -101,8 +127,8 @@ export function GetPayInCheckoutView(props: GetPayInCheckoutViewProps): React.JS
 
   const handleError = useCallback(() => {
     setLoading(false);
-    callbacks.current.onLoadError?.(loadErrorMessage ?? LOAD_FAILED);
-  }, [loadErrorMessage]);
+    latest.current.onLoadError?.(fallbackText(latest.current.loadErrorMessage, LOAD_FAILED));
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -133,14 +159,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#ffffff',
   },
-  // Written out rather than StyleSheet.absoluteFillObject, which React Native 0.88 (Expo 58)
-  // removed: spreading it there adds nothing and the overlay loses its position.
   loading: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
+    ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#ffffff',

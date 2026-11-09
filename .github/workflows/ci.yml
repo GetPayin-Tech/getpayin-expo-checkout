@@ -25,7 +25,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: '20.x'
+          node-version: '24.x'
           cache: npm
           cache-dependency-path: package-lock.json
 
@@ -52,7 +52,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node-version: ['20.x', '22.x', '24.x']
+        # 20.x is gone: vitest 5, tsup 9, markdownlint 0.50 and React Native 0.88 all
+        # declare Node >= 22, so `npm ci` refuses the lockfile there.
+        node-version: ['22.x', '24.x']
     steps:
       - uses: actions/checkout@v7
 
@@ -77,7 +79,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: '20.x'
+          node-version: '24.x'
           cache: npm
           cache-dependency-path: package-lock.json
 

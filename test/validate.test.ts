@@ -3,6 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { assertCheckoutUrl, assertExpectedInvoiceId, assertReturnUrl } from '../src/core/validate';
 import { GetPayInConfigError } from '../src/errors';
 
+/** Past the point a JSON number keeps every digit of an invoice id. */
+const MAX_SAFE = Number.MAX_SAFE_INTEGER;
+
 describe('assertCheckoutUrl', () => {
   it('accepts the https URL the server returned', () => {
     const url = 'https://pay.getpayin.com/checkout/abc?sig=1';
@@ -39,8 +42,14 @@ describe('assertReturnUrl', () => {
 });
 
 describe('assertExpectedInvoiceId', () => {
-  it.each([4512, '4512', ' 4512 ', 'INV-1'])('accepts %s', (value) => {
-    expect(assertExpectedInvoiceId(value)).toBe(value);
+  it.each([
+    ['the number the server reported', 4512, '4512'],
+    ['the same id as text', '4512', '4512'],
+    ['text with stray whitespace', ' 4512 ', '4512'],
+    ['leading zeros, which carry no meaning', '004512', '4512'],
+    ['an id that is not digits', 'INV-1', 'INV-1'],
+  ])('accepts %s and hands back the text it is compared as', (_label, value, expected) => {
+    expect(assertExpectedInvoiceId(value)).toBe(expected);
   });
 
   it('accepts no invoice id at all', () => {
@@ -53,6 +62,9 @@ describe('assertExpectedInvoiceId', () => {
     ['null', null],
     ['NaN', Number.NaN],
     ['Infinity', Number.POSITIVE_INFINITY],
+    ['a number past Number.MAX_SAFE_INTEGER, which has already lost digits', MAX_SAFE + 2],
+    ['a number in exponent form, which never matches the link text', 1e21],
+    ['a number that is not a whole invoice id', 45.12],
     ['true', true],
     ['the whole init response', { invoice_id: 4512, checkout_url: 'https://x' }],
     ['an array', [4512]],

@@ -66,28 +66,43 @@ opens on top of a checkout that has already been paid.
 That means every navigation goes through the package's own handler, which sorts them into
 four outcomes:
 
-| Outcome    | What happens           | Examples                                               |
-| ---------- | ---------------------- | ------------------------------------------------------ |
-| `return`   | The checkout ends.     | your return link                                       |
-| `load`     | Stays in the web view. | `https:`, `http:`, `about:`, `data:`, `blob:`, `file:` |
-| `external` | Handed to the phone.   | a bank app for 3-D Secure, `tel:`, `mailto:`           |
-| `block`    | Refused.               | `javascript:`, `vbscript:`, your own app's scheme      |
+| Outcome    | What happens           | Examples                                                         |
+| ---------- | ---------------------- | ---------------------------------------------------------------- |
+| `return`   | The checkout ends.     | your return link, from the page itself                           |
+| `load`     | Stays in the web view. | `https:`, `http:`, `about:`, `data:`, `blob:`, `file:`           |
+| `external` | Handed to the phone.   | a bank app for 3-D Secure, `tel:`, `mailto:`, `intent:`          |
+| `block`    | Refused.               | `javascript:`, your own app's scheme, `market:`, `sms:`, a frame |
 
-Two of those deserve explanation.
+Three of those deserve explanation.
 
 **Why `external` exists, and why it is narrowed.** A 3-D Secure step can hand the payer to
 their bank's app, and every acquirer has a different set of bank schemes, so this cannot be
-an allow-list inside the package. It is narrowed in two ways instead: script schemes are
-refused, and **every scheme your own app answers to is refused whenever it is not the
-return link** (the schemes in your app config, the iOS bundle identifier, the Android
-package name and the development-build scheme), so a page cannot drive your app's
-deep-link routes. Anything else is opened with `openURL` directly.
+an allow-list inside the package. It is narrowed in three ways instead:
+
+1. Script schemes — `javascript:`, `vbscript:` — are refused.
+2. **Every scheme your own app answers to is refused whenever it is not the return link**:
+   the schemes in your app config, an Android intent filter's or `CFBundleURLTypes`'
+   schemes, the iOS bundle identifier, the Android package name and the development-build
+   scheme. So a page cannot drive your app's deep-link routes.
+3. Schemes with no part in paying for anything are refused even though another app may
+   answer to them: `market:`, `itms-apps:`, `itms-services:`, `sms:`, `smsto:`, `mms:`,
+   `shortcuts:`, `content:` and `android-app:`. A browser would refuse most of these from
+   the same page, and the link here is opened with no confirmation of any kind.
+
+Anything else is opened with `openURL` directly.
 
 That is a trade-off. Asking `canOpenURL` first would limit pages to the schemes your app
 has declared — in practice none, so a bank-app step would never open. Without it, a page
 inside the checkout can open another installed app without a tap, which is exactly what a
-bank-app step needs. A link nothing on the phone can open fails quietly and the checkout
-stays where it was.
+bank-app step needs. A link nothing on the phone can open is reported through
+`onLoadError`, so the payer is told why the step did nothing and still has a way out.
+
+**Why a frame inside the page gets less.** A navigation the page did not ask for itself can
+only ever `load` ordinary web content. It never ends the checkout and never reaches another
+app. A 3-D Secure page knows the real invoice id, so an `<iframe>` pointing itself at
+`myapp://payment-return?success=1&invoice_id=<the real one>` would otherwise report a
+payment that was never made — and `expectedInvoiceId` would not catch it, because the
+invoice id is genuine.
 
 The reason this matters: a 3-D Secure page is hosted by the **issuer**, not by GetPayIn.
 The page driving these navigations is not one this package controls.
@@ -96,6 +111,23 @@ The page driving these navigations is not one this package controls.
 scripts to. So there is no `injectedJavaScript`, no `injectedJavaScriptBeforeContentLoaded`
 and no `onMessage` anywhere — not even for diagnostics, and not on Android either. The
 build fails if one appears.
+
+## Reading the return link
+
+The link is read by exact field name — `success`, `invoice_id`, `invoice_status`,
+`message` — and the values are taken as sent. A link is refused outright when it repeats
+any field, or carries a name only a looser reader would take for one of those four
+(`Success`, `invoiceId`, `%73uccess`).
+
+That keeps this reader and a server checking the link's `signature` from ever reading
+different values out of one link. A reader that folded case or took the first copy of a
+field could report invoice B as paid from a link whose signature is genuine for invoice A:
+`?invoiceId=5001&success=1&invoice_id=4000` is a real signed link for 4000 that a looser
+reader calls 5001.
+
+A refused link is `not_paid` with `code: 'unreadable_return_link'`. A genuine decline
+carries no code, which is how the two are told apart — the link's own message would not,
+because GetPayIn always sends one.
 
 ## What is out of scope
 

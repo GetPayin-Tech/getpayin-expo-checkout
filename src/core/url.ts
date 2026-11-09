@@ -70,8 +70,8 @@ export function isSameTarget(a: string, b: string): boolean {
   );
 }
 
-/** Decodes one query value, leaving a malformed escape sequence as it was. */
-function decodeValue(value: string): string {
+/** Decodes one query name or value, leaving a malformed escape sequence as it was. */
+export function decodeQueryComponent(value: string): string {
   const withSpaces = value.replace(/\+/g, ' ');
 
   try {
@@ -79,6 +79,39 @@ function decodeValue(value: string): string {
   } catch {
     return withSpaces;
   }
+}
+
+/** Splits a query string into its raw, undecoded name and value pairs, in order. */
+function queryPairs(query: string): [string, string][] {
+  const pairs: [string, string][] = [];
+
+  for (const pair of query.split('&')) {
+    if (pair === '') {
+      continue;
+    }
+
+    const separatorIndex = pair.indexOf('=');
+
+    pairs.push(
+      separatorIndex === -1
+        ? [pair, '']
+        : [pair.slice(0, separatorIndex), pair.slice(separatorIndex + 1)],
+    );
+  }
+
+  return pairs;
+}
+
+/**
+ * Every field name in a query string exactly as sent, in order and undecoded.
+ *
+ * The return-link reader refuses a link carrying a name that only a looser reader would
+ * take for one of its own fields — `Success`, `invoiceId`, `%73uccess` — so it has to see
+ * the names the way the server checking the link's signature sees them, which is before
+ * any decoding or case folding.
+ */
+export function rawQueryNames(query: string): string[] {
+  return queryPairs(query).map(([name]) => name);
 }
 
 /**
@@ -95,21 +128,14 @@ function decodeValue(value: string): string {
 export function readQuery(query: string): Map<string, string[]> {
   const params = new Map<string, string[]>();
 
-  for (const pair of query.split('&')) {
-    if (pair === '') {
-      continue;
-    }
-
-    const separatorIndex = pair.indexOf('=');
-    const rawKey = separatorIndex === -1 ? pair : pair.slice(0, separatorIndex);
-    const rawValue = separatorIndex === -1 ? '' : pair.slice(separatorIndex + 1);
-    const key = decodeValue(rawKey);
-    const values = params.get(key);
+  for (const [rawName, rawValue] of queryPairs(query)) {
+    const name = decodeQueryComponent(rawName);
+    const values = params.get(name);
 
     if (values === undefined) {
-      params.set(key, [decodeValue(rawValue)]);
+      params.set(name, [decodeQueryComponent(rawValue)]);
     } else {
-      values.push(decodeValue(rawValue));
+      values.push(decodeQueryComponent(rawValue));
     }
   }
 

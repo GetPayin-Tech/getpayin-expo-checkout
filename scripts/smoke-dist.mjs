@@ -64,6 +64,7 @@ const EXPORTS = [
   'GetPayInCheckoutView',
   'createPaymentReturnRedirect',
   'CheckoutResult',
+  'CheckoutResultCode',
   'OpenCheckoutOptions',
 ];
 

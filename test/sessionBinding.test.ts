@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { resolveReturn } from '../src/core/returnUrl';
-import { CheckoutStatus } from '../src/types';
+import { CheckoutResultCode, CheckoutStatus } from '../src/types';
 
 const RETURN_URL = 'myapp://payment-return';
 
@@ -54,8 +54,10 @@ describe('resolveReturn binds a link to the invoice it was opened for', () => {
 
     const result = resolveReturn(replayed, { expectedInvoiceId: 5001 });
 
+    // `invoiceId` is a name a looser reader would take for `invoice_id`, so the link is
+    // refused as unreadable before the invoice is even compared.
     expect(result.status).toBe(CheckoutStatus.NotPaid);
-    expect(result.message).toMatch(/different invoice/i);
+    expect(result.code).toBe(CheckoutResultCode.UnreadableReturnLink);
   });
 
   it('refuses a paid link that names a different number', () => {

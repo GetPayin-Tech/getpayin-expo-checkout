@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { cancelledResult, matchesReturnUrl, readCheckoutResult } from '../src/core/returnUrl';
-import { CheckoutStatus } from '../src/types';
+import { CheckoutResultCode, CheckoutStatus } from '../src/types';
 
 const RETURN_URL = 'myapp://payment-return';
 
@@ -49,6 +49,7 @@ describe('readCheckoutResult', () => {
     expect(result).toEqual({
       status: CheckoutStatus.Paid,
       invoiceId: '4512',
+      invoiceStatus: 'PAID',
       message: 'Payment completed',
       returnUrl: PAID_LINK,
     });
@@ -137,6 +138,102 @@ describe('readCheckoutResult', () => {
 
     expect(result.status).toBe(CheckoutStatus.NotPaid);
     expect(result.returnUrl).toBe('nonsense');
+  });
+
+  /*
+   * GetPayIn's bridge always sends a message, so without a code of its own an unreadable
+   * link would arrive looking exactly like a genuine decline — and nothing would be left
+   * to alert on when the backend and this reader stop agreeing about the link's shape.
+   */
+  it('marks an unreadable link with a code a genuine decline does not carry', () => {
+    const unreadable = readCheckoutResult(
+      'myapp://payment-return?invoice_id=4512&message=Payment+declined',
+    );
+    const declined = readCheckoutResult(
+      'myapp://payment-return?success=0&invoice_id=4512&message=Payment+declined',
+    );
+
+    expect(unreadable.code).toBe(CheckoutResultCode.UnreadableReturnLink);
+    expect(declined.code).toBeUndefined();
+  });
+
+  it("does not show the payer the link's own message when it could not be read", () => {
+    const result = readCheckoutResult(
+      'myapp://payment-return?success=true&invoice_id=4512&message=Payment+completed',
+    );
+
+    expect(result.status).toBe(CheckoutStatus.NotPaid);
+    expect(result.message).toMatch(/recognises/i);
+    expect(result.invoiceId).toBeUndefined();
+  });
+
+  it('treats a blank message as no message at all', () => {
+    expect(
+      readCheckoutResult('myapp://payment-return?success=0&message=+').message,
+    ).toBeUndefined();
+  });
+
+  it.each([
+    ['a repeated signature, which is what a server disambiguates on', 'signature=a&signature=b'],
+    ['a repeated field GetPayIn adds later', 'auth_code=1&auth_code=2'],
+  ])('treats a link that repeats %s as unreadable', (_label, extra) => {
+    const result = readCheckoutResult(`myapp://payment-return?success=1&invoice_id=4512&${extra}`);
+
+    expect(result.status).toBe(CheckoutStatus.NotPaid);
+    expect(result.code).toBe(CheckoutResultCode.UnreadableReturnLink);
+  });
+
+  /*
+   * A server checking the signature over the raw query string reads these names one way
+   * and a reader that folds case, ignores separators or decodes names reads them another.
+   * The link is refused rather than read differently by the two.
+   */
+  it.each([
+    ['a case variant of the flag', 'Success=0&success=1&invoice_id=7'],
+    ['an upper-case variant of the flag', 'SUCCESS=0&success=1&invoice_id=7'],
+    ['a percent-encoded field name', '%73uccess=1&invoice_id=7'],
+    ['an invoice id written in another style', 'success=1&invoiceId=5001&invoice_id=7'],
+    ['a separator variant of the status', 'success=1&invoice-status=PAID&invoice_id=7'],
+  ])('refuses %s as unreadable', (_label, query) => {
+    const result = readCheckoutResult(`myapp://payment-return?${query}`);
+
+    expect(result.status).toBe(CheckoutStatus.NotPaid);
+    expect(result.code).toBe(CheckoutResultCode.UnreadableReturnLink);
+  });
+
+  it('reads the invoice status the link reported', () => {
+    expect(
+      readCheckoutResult('myapp://payment-return?success=1&invoice_id=4512&invoice_status=PAID')
+        .invoiceStatus,
+    ).toBe('PAID');
+  });
+
+  it.each(['PARTIALLY_PAID', 'AUTHORIZED', 'UNPAID', 'REFUNDED'])(
+    'refuses a paid flag carrying invoice_status=%s, which is not an order to fulfil',
+    (invoiceStatus) => {
+      const result = readCheckoutResult(
+        `myapp://payment-return?success=1&invoice_id=4512&invoice_status=${invoiceStatus}`,
+      );
+
+      expect(result.status).toBe(CheckoutStatus.NotPaid);
+      expect(result.code).toBe(CheckoutResultCode.UnexpectedInvoiceStatus);
+      expect(result.invoiceStatus).toBe(invoiceStatus);
+    },
+  );
+
+  it('does not let invoice_status upgrade a declined link to paid', () => {
+    const result = readCheckoutResult(
+      'myapp://payment-return?success=0&invoice_id=4512&invoice_status=PAID',
+    );
+
+    expect(result.status).toBe(CheckoutStatus.NotPaid);
+    expect(result.code).toBeUndefined();
+  });
+
+  it('still reads a paid link that carries no invoice status at all', () => {
+    expect(readCheckoutResult('myapp://payment-return?success=1&invoice_id=4512').status).toBe(
+      CheckoutStatus.Paid,
+    );
   });
 });
 

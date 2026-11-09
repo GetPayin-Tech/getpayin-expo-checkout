@@ -36,6 +36,12 @@ updates:
         update-types: ['version-update:semver-minor', 'version-update:semver-major']
       - dependency-name: 'react-native-*'
         update-types: ['version-update:semver-major']
+      # React's major is part of an Expo version too: on its own it makes a set no real
+      # app has.
+      - dependency-name: 'react'
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@types/react'
+        update-types: ['version-update:semver-major']
 
   - package-ecosystem: github-actions
     directory: /
