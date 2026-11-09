@@ -36,13 +36,13 @@ First release.
   `StyleSheet.absoluteFill` is still there and is what it spreads. The toolchain and CI run
   on Node 22 and 24, which is what Expo 58's own dependencies require.
 - `closeLabel`, `loadErrorMessage` and `linkErrorMessage`, so an app in another language,
-  Arabic for example, shows the payer its own words instead of English ones. Blank text —
-  which is what `t('key')` returns for a missing translation key — falls back to the
+  Arabic for example, shows the payer its own words instead of English ones. Blank text,
+  which is what `t('key')` returns for a missing translation key, falls back to the
   English default rather than being shown, so a close button never loses its label.
 - `invoiceStatus` and `code` on `CheckoutResult`. `invoiceStatus` is the invoice state the
   link reported; only `PAID` is `paid`, so an `AUTHORIZED` or `PARTIALLY_PAID` invoice is
-  no longer reported as an order to fulfil. `code` says why a `not_paid` is not a decline —
-  `unreadable_return_link`, `wrong_invoice` or `unexpected_invoice_status` — which is what
+  no longer reported as an order to fulfil. `code` says why a `not_paid` is not a decline:
+  `unreadable_return_link`, `wrong_invoice` or `unexpected_invoice_status`. That is what
   tells an unreadable link apart from a genuine decline, and what to alert on.
 - `hostAppSchemes()` and `schemesFromAppConfig()` are exported, so an app embedding the
   checkout in a web view of its own can build the list `createNavigationHandler` needs.
@@ -77,13 +77,13 @@ your server. See [`docs/security.md`](docs/security.md).
 - The return link is read by GetPayIn's own fields only (`success`, `invoice_id`,
   `invoice_status`, `message`), by their exact names. A link that repeats **any** field,
   `signature` included, or that carries a name only a looser reader would take for one of
-  those four — `Success`, `invoiceId`, `%73uccess` — is `not_paid` with
+  those four (`Success`, `invoiceId`, `%73uccess`) is `not_paid` with
   `unreadable_return_link`. A field GetPayIn does not send, such as `status=paid`, cannot
   change the outcome, and the package cannot read a different invoice out of a link than a
   server checking its signature would.
 - A return link whose status cannot be read is reported as `not_paid`, never `paid`, and
   the link's own message is not shown: GetPayIn always sends one, so keeping it would make
-  an unreadable link indistinguishable from a decline — and a link reading
+  an unreadable link indistinguishable from a decline, and a link reading
   `success=true&message=Payment+completed` would have told the payer the payment had
   succeeded while the app was told it had not.
 - A navigation a frame inside the checkout page asks for can only ever load ordinary web
@@ -96,11 +96,11 @@ your server. See [`docs/security.md`](docs/security.md).
   `itms-services:`, `sms:`, `smsto:`, `mms:`, `shortcuts:`, `content:` and `android-app:`.
   The link is opened with no confirmation of any kind, and a browser would refuse most of
   these from the same page. `tel:`, `mailto:` and Android's `intent:` stay allowed.
-- Every scheme the app answers to is refused whenever it is not the return link — the
+- Every scheme the app answers to is refused whenever it is not the return link: the
   return link's scheme, the other schemes in the app config, an Android intent filter's
   schemes, `ios.infoPlist.CFBundleURLTypes`, the iOS bundle identifier, the Android package
   name and the development-build scheme `exp+<slug>` (read through `expo-constants`, now a
-  peer dependency) — so a checkout page, which during a 3-D Secure step is hosted by the
+  peer dependency). So a checkout page, which during a 3-D Secure step is hosted by the
   issuer, not by GetPayIn, cannot drive the host app's deep-link routes. Reading the app
   config cannot take the checkout screen down with it: `Constants.expoConfig` throws rather
   than returning null in a build with no embedded manifest.
@@ -108,7 +108,7 @@ your server. See [`docs/security.md`](docs/security.md).
   `Linking.openURL` directly, not after `Linking.canOpenURL`, which answers no for every
   scheme the app has not declared. No bank scheme has to be declared. A link nothing on the
   phone can open is reported through `onLoadError`, so the payer is told why the step did
-  nothing and the top bar appears — with the failure swallowed, a payer on a screen with
+  nothing and the top bar appears. With the failure swallowed, a payer on a screen with
   `headerShown` off had no way out and the `open()` promise never settled.
 - The shipped bundle is checked on every build for a signing secret, an injected script, a
   message bridge, a user-agent override and the presence of the wallet settings.

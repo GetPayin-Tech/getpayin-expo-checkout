@@ -8,7 +8,7 @@ your app  ◀──  your server                       checkout_url + invoiceId
 your app  ──▶  this package                      opens the checkout, payer pays
 your app  ◀──  this package                      { status, invoiceId, message }
 your app  ──▶  your server                       confirm before you deliver anything
-          ◀──  GetPayIn                          invoice.paid webhook — the real answer
+          ◀──  GetPayIn                          invoice.paid webhook, the real answer
 ```
 
 Your server is the only place that knows whether a payment happened. The app's result is a
@@ -74,7 +74,7 @@ none. It is the stable value to branch on and to look a message of your own up b
 | `code`                      | What happened                                           | What to do                                                           |
 | --------------------------- | ------------------------------------------------------- | -------------------------------------------------------------------- |
 | absent                      | The checkout declined or failed the payment.            | Show `message`. Offer a retry.                                       |
-| `unreadable_return_link`    | The link's own fields could not be read.                | Check the invoice on your server. Alert on this one — it is a bug.   |
+| `unreadable_return_link`    | The link's own fields could not be read.                | Check the invoice on your server. Alert on this one; it is a bug.    |
 | `wrong_invoice`             | The link named another invoice.                         | Check the invoice on your server. Do not retry blindly.              |
 | `unexpected_invoice_status` | `success=1` with an `invoice_status` other than `PAID`. | Check the invoice on your server. An authorised invoice is not paid. |
 
@@ -83,8 +83,8 @@ payment again before the invoice has been checked on your server.
 
 ## Confirming it
 
-`status: 'paid'` is a claim, not an authorisation. Your return scheme is public — it is in
-your `Info.plist` and your `AndroidManifest.xml` — so any web page, message, QR code or
+`status: 'paid'` is a claim, not an authorisation. Your return scheme is public: it is in
+your `Info.plist` and your `AndroidManifest.xml`, so any web page, message, QR code or
 other app on the phone can open your app with
 `myapp://payment-return?success=1&invoice_id=anything`.
 
@@ -111,7 +111,7 @@ try {
   const result = await GetPayInCheckout.open(checkoutUrl, options);
 } catch (error) {
   if (error instanceof GetPayInSessionBusyError) {
-    return; // a double tap on Pay — ignore it
+    return; // a double tap on Pay, ignore it
   }
 
   throw error;
@@ -159,7 +159,7 @@ You do not choose this per call; the platform does, with one setting for Android
 | Android  | `false` (default) | The phone's browser sheet |
 | Android  | `true`            | Your app's own screen     |
 
-Keep `googlePayInApp: false` until Google has approved your app — see
+Keep `googlePayInApp: false` until Google has approved your app. See
 [Google Pay on Android](google-pay.md). To show the payer which one a build will use:
 
 ```tsx
@@ -213,14 +213,14 @@ GetPayIn's return link carries `success`, `invoice_id`, `invoice_status`, `messa
 
 Names must match exactly, values are taken as sent, and the link is reported as
 `not_paid` with `code: 'unreadable_return_link'` when it repeats **any** field or carries a
-name only a looser reader would take for one of those four — `Success`, `invoiceId`,
-`%73uccess`. Nothing else on the link is read, so a field GetPayIn does not send, such as
+name only a looser reader would take for one of those four (`Success`, `invoiceId`,
+`%73uccess`). Nothing else on the link is read, so a field GetPayIn does not send, such as
 `status=paid`, cannot change the outcome. A forged link can still say `success=1`, which is
 why your server confirms the payment.
 
 The whole link stays in `returnUrl`, so your server can check its `signature`. If it does,
 read the values from the link the same strict way: exact names, no case folding, no
-decoding of names, and refuse a field that appears twice — `signature` included. A looser
+decoding of names, and refuse a field that appears twice, `signature` included. A looser
 reader could take a different `invoice_id` from the one the signature covers, and accept a
 genuine link for one invoice as payment for another.
 

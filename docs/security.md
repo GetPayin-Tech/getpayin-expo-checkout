@@ -19,8 +19,8 @@ report a vulnerability, see [`SECURITY.md`](../SECURITY.md).
 This is the important one.
 
 Your app's return scheme is declared in your `Info.plist` and your `AndroidManifest.xml`.
-It is public. **Anything on the phone can open your app with it** — a link in a web page,
-an SMS, a QR code, or `startActivity` from any other installed app — carrying whatever
+It is public. **Anything on the phone can open your app with it**: a link in a web page,
+an SMS, a QR code, or `startActivity` from any other installed app, carrying whatever
 query it likes:
 
 ```text
@@ -41,7 +41,7 @@ So `status: 'paid'` means "the link said so", not "the money moved".
    `getInitialURL()` are consumed once per process for the same reason; links pushed by the
    `url` event are not, because the system delivers each of those once as it happens.
 3. **`expectedInvoiceId` binds the link to the checkout.** With it set, a `paid` link
-   naming a different invoice — or naming none at all — is reported as `not_paid`. **Pass
+   naming a different invoice, or naming none at all, is reported as `not_paid`. **Pass
    it whenever you have it.** Without it the package has nothing to tie the link to.
 4. **One checkout at a time**, so a second cannot be stacked over a live one.
 5. **A result is delivered once.** The return link can arrive from a web view navigation, a
@@ -79,7 +79,7 @@ Three of those deserve explanation.
 their bank's app, and every acquirer has a different set of bank schemes, so this cannot be
 an allow-list inside the package. It is narrowed in three ways instead:
 
-1. Script schemes — `javascript:`, `vbscript:` — are refused.
+1. Script schemes (`javascript:`, `vbscript:`) are refused.
 2. **Every scheme your own app answers to is refused whenever it is not the return link**:
    the schemes in your app config, an Android intent filter's or `CFBundleURLTypes`'
    schemes, the iOS bundle identifier, the Android package name and the development-build
@@ -92,7 +92,7 @@ an allow-list inside the package. It is narrowed in three ways instead:
 Anything else is opened with `openURL` directly.
 
 That is a trade-off. Asking `canOpenURL` first would limit pages to the schemes your app
-has declared — in practice none, so a bank-app step would never open. Without it, a page
+has declared. In practice that is none, so a bank-app step would never open. Without it, a page
 inside the checkout can open another installed app without a tap, which is exactly what a
 bank-app step needs. A link nothing on the phone can open is reported through
 `onLoadError`, so the payer is told why the step did nothing and still has a way out.
@@ -101,7 +101,7 @@ bank-app step needs. A link nothing on the phone can open is reported through
 only ever `load` ordinary web content. It never ends the checkout and never reaches another
 app. A 3-D Secure page knows the real invoice id, so an `<iframe>` pointing itself at
 `myapp://payment-return?success=1&invoice_id=<the real one>` would otherwise report a
-payment that was never made — and `expectedInvoiceId` would not catch it, because the
+payment that was never made, and `expectedInvoiceId` would not catch it, because the
 invoice id is genuine.
 
 The reason this matters: a 3-D Secure page is hosted by the **issuer**, not by GetPayIn.
@@ -109,13 +109,13 @@ The page driving these navigations is not one this package controls.
 
 **Why nothing is injected.** WebKit turns Apple Pay off on any page the host app has added
 scripts to. So there is no `injectedJavaScript`, no `injectedJavaScriptBeforeContentLoaded`
-and no `onMessage` anywhere — not even for diagnostics, and not on Android either. The
+and no `onMessage` anywhere, not even for diagnostics, and not on Android either. The
 build fails if one appears.
 
 ## Reading the return link
 
-The link is read by exact field name — `success`, `invoice_id`, `invoice_status`,
-`message` — and the values are taken as sent. A link is refused outright when it repeats
+The link is read by exact field name (`success`, `invoice_id`, `invoice_status`,
+`message`), and the values are taken as sent. A link is refused outright when it repeats
 any field, or carries a name only a looser reader would take for one of those four
 (`Success`, `invoiceId`, `%73uccess`).
 
@@ -126,7 +126,7 @@ field could report invoice B as paid from a link whose signature is genuine for 
 reader calls 5001.
 
 A refused link is `not_paid` with `code: 'unreadable_return_link'`. A genuine decline
-carries no code, which is how the two are told apart — the link's own message would not,
+carries no code, which is how the two are told apart. The link's own message would not,
 because GetPayIn always sends one.
 
 ## What is out of scope
@@ -142,7 +142,7 @@ because GetPayIn always sends one.
 
 ## Checklist
 
-- [ ] The hash token is on your server only — not in the app, not in version control, not
+- [ ] The hash token is on your server only: not in the app, not in version control, not
       in any client-side config.
 - [ ] Your server confirms `invoice.paid` before fulfilling.
 - [ ] `expectedInvoiceId` is passed on every `open()` call.

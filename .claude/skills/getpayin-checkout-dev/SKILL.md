@@ -1,6 +1,6 @@
 ---
 name: getpayin-checkout-dev
-description: Work on the @getpayin/expo-checkout package itself — its layering rules, the settings that fail silently on a phone, the invariants the build enforces, and the verify loop. Use when editing, reviewing or testing files under src/core, src/webview, src/sessions, src/components or src/checkout.ts in the getpayin-expo-checkout repository, when adding an export or option to it, or when a change touches the return-link reader, the presentation rule, the navigation classifier or the deep-link watcher.
+description: Work on the @getpayin/expo-checkout package itself: its layering rules, the settings that fail silently on a phone, the invariants the build enforces, and the verify loop. Use when editing, reviewing or testing files under src/core, src/webview, src/sessions, src/components or src/checkout.ts in the getpayin-expo-checkout repository, when adding an export or option to it, or when a change touches the return-link reader, the presentation rule, the navigation classifier or the deep-link watcher.
 ---
 
 # Working on @getpayin/expo-checkout
@@ -52,11 +52,11 @@ session must go through `resolveReturn`, or they will drift on what a link means
 ## Invariants the build enforces
 
 `npm run smoke` greps the shipped bundles and fails the build on any of these. Do not work
-around it — the gate is the point.
+around it. The gate is the point.
 
 1. No `hashToken`, `createHmac`, `timingSafeEqual` or `node:crypto`. The app signs nothing.
 2. No `injectedJavaScript`, no `injectedJavaScriptBeforeContentLoaded`, no `onMessage`.
-   WebKit turns Apple Pay off on any page the host app has scripted — on every platform, so
+   WebKit turns Apple Pay off on any page the host app has scripted, on every platform, so
    not "iOS only".
 3. No `userAgent` or `applicationNameForUserAgent`. Google checks it and requires it to end
    with `GOOGLE_PAY_SUPPORTED`.
@@ -73,7 +73,7 @@ around it — the gate is the point.
    `not_paid`. Check this on any change to `core/returnUrl.ts`.
 2. **The launch link never settles a later checkout.** `getInitialURL()` is a _pull_ of
    persistent state and its values are consumed once per process; the `url` event is a
-   _push_ and is not deduplicated across sessions. Do not collapse the two — the asymmetry
+   _push_ and is not deduplicated across sessions. Do not collapse the two: the asymmetry
    is what stops a forged cold-start link becoming the next checkout's `paid`, while still
    letting a byte-identical link settle a second genuine checkout.
 3. **`expectedInvoiceId` downgrades only `paid`.** Rewriting a `not_paid` or `cancelled`
@@ -82,8 +82,8 @@ around it — the gate is the point.
    never reach `Linking.openURL`.** `classifyNavigation` must return `block` for all three;
    the app's schemes come from `hostAppSchemes()` (app config schemes, an Android intent
    filter's, `CFBundleURLTypes`, iOS bundle identifier, Android package, `exp+<slug>`), and
-   `REFUSED_APP_SCHEMES` holds the rest. `external` hands a URL to the phone and the page —
-   which may be issuer-hosted, not GetPayIn's — is what chose it.
+   `REFUSED_APP_SCHEMES` holds the rest. `external` hands a URL to the phone, and the page that
+   chose it may be issuer-hosted rather than GetPayIn's.
 5. **A frame inside the checkout page can only ever `load`.** `isTopFrame` is required, not
    defaulted: a 3-D Secure page knows the real invoice id, so an `<iframe>` aimed at the
    return link would report a payment nobody made, and `expectedInvoiceId` is no defence.
@@ -91,7 +91,7 @@ around it — the gate is the point.
    a number and the link carries text; comparing them as they arrive reports every paid
    checkout as `not_paid`.
 7. **A payer never sees developer text.** `buildCheckoutSource`'s `error` names an option
-   and its value — it goes to `onLoadError`'s second argument, and the payer gets
+   and its value, so it goes to `onLoadError`'s second argument, and the payer gets
    `loadErrorMessage`. Blank option text falls back through `core/text.ts`, because
    `t('key')` with a missing key returns `''` and `??` would keep it.
 8. **The navigation handler is keyed to the session, not the callbacks.** It completes at
@@ -136,7 +136,7 @@ lines** and 95% of branches. A new pure function needs tests in the same change.
 2. Thread it through `core/returnUrl.ts` if it affects what a link means, so both
    presentations get it.
 3. Export it from `src/index.ts`.
-4. Add it to `docs/api.md` — the reference is expected to be complete.
+4. Add it to `docs/api.md`. The reference is expected to be complete.
 5. Add it to `scripts/smoke-dist.mjs`'s `EXPORTS` list if it is a headline export.
 6. Note it in `CHANGELOG.md`.
 

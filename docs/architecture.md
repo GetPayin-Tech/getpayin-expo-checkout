@@ -68,7 +68,7 @@ and the navigation decisions in Node.
 Two React details in there are load-bearing, not style:
 
 1. **The navigation handler is keyed to a `session` object, not to the callbacks.** The
-   handler completes at most once, so it must be rebuilt when the checkout changes — and
+   handler completes at most once, so it must be rebuilt when the checkout changes, and
    must _not_ be rebuilt because the caller passed a fresh inline `onComplete`, which would
    reset the latch and report one payment twice. The callbacks reach it through a ref.
 2. **A failed load always shows the top bar.** Otherwise a checkout that cannot load with
@@ -85,7 +85,7 @@ point:
 - **`getInitialURL()`** is a pull of state that persists. It keeps returning the same link
   for as long as the activity's intent holds it. Values from it are therefore consumed once
   per process, and the link the app was _launched_ with is consumed before any checkout can
-  start — it belongs to no session, and letting a later checkout read it would report a
+  start. It belongs to no session, and letting a later checkout read it would report a
   payment that never happened.
 
 Getting this wrong is not a style question: it is how a forged link that cold-starts the

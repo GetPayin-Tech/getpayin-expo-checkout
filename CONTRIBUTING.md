@@ -21,7 +21,7 @@ deep-link sources are treated differently. Changing anything in `src/core`,
 `src/webview` or `src/sessions` without reading it is how a silent payment bug gets in.
 
 [`docs/security.md`](docs/security.md) explains the threat model the code is written
-against — above all, that the return link is attacker-controllable.
+against, above all that the return link is attacker-controllable.
 
 ## Things that must never change
 
@@ -50,7 +50,7 @@ mocked, and coverage over the pure and session layers is gated at 100% of statem
 functions and lines.
 
 When you fix a bug, write the test that fails first. Several of the tests in this repo
-exist because they caught a real one — `test/launchUrl.test.ts` and
+exist because they caught a real one: `test/launchUrl.test.ts` and
 `test/returnUrlSpoofing.test.ts` in particular.
 
 What the suite cannot cover is the phone. Before a release, check by hand:
@@ -82,7 +82,7 @@ The docs are split by job, and a change usually touches one of them:
 ## Commits and pull requests
 
 Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`). Say what breaks if the change is
-wrong — that is the part a reviewer cannot work out from the diff.
+wrong. That is the part a reviewer cannot work out from the diff.
 
 ## Releasing
 

@@ -13,7 +13,7 @@ not try to detect the approval for you.
 | `true`            | Your app's own screen     | Yes        | Yes            |
 
 Set it to `true` only once Google has replied. Set it too early and Android payers get an
-app screen with no Google Pay button and no error explaining why — card still works, so it
+app screen with no Google Pay button and no error explaining why. Card still works, so it
 looks like Google Pay is simply missing.
 
 ## Getting Google's approval
@@ -25,7 +25,7 @@ looks like Google Pay is simply missing.
    and follow Google's form. It asks for screenshots of the Google Pay flow.
 3. The form also asks for an integration type (Gateway or Direct) and gateway details. The
    Google Pay button on the checkout comes from CyberSource's payment box, so these values
-   are ours to give you — **ask GetPayIn support rather than guessing**. A wrong value here
+   are ours to give you, so **ask GetPayIn support rather than guessing**. A wrong value here
    is rejected late.
 4. Click **Submit for approval** and wait for Google's reply.
 5. When approved, set `googlePayInApp: true` and release a new build.

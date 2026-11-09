@@ -1,6 +1,6 @@
 ---
 name: getpayin-expo-checkout
-description: Integrate GetPayIn mobile payments into an Expo or React Native app with @getpayin/expo-checkout — Apple Pay, Google Pay and card on the hosted checkout. Use when adding or debugging in-app payments, when the user mentions GetPayIn, Apple Pay or Google Pay in Expo or React Native, a payment WebView, a payment return deep link, GetPayInProvider, GetPayInCheckout.open, or symptoms such as a missing wallet button, HTTP 403 from a checkout link, or an app that never receives the payment result.
+description: Integrate GetPayIn mobile payments into an Expo or React Native app with @getpayin/expo-checkout: Apple Pay, Google Pay and card on the hosted checkout. Use when adding or debugging in-app payments, when the user mentions GetPayIn, Apple Pay or Google Pay in Expo or React Native, a payment WebView, a payment return deep link, GetPayInProvider, GetPayInCheckout.open, or symptoms such as a missing wallet button, HTTP 403 from a checkout link, or an app that never receives the payment result.
 ---
 
 # GetPayIn Expo checkout integration
@@ -21,7 +21,7 @@ asks for an app-side-only confirmation, say why that is unsafe and offer the ser
 ## Quick start
 
 ```tsx
-// 1. app/_layout.tsx (expo-router) or App.tsx — mount once at the root
+// 1. app/_layout.tsx (expo-router) or App.tsx: mount once at the root
 import { GetPayInProvider } from '@getpayin/expo-checkout';
 
 export default function RootLayout() {
@@ -47,7 +47,7 @@ if (result.status === 'paid') {
 ```
 
 ```tsx
-// 3. app/+native-intent.tsx — expo-router only, or payers see "Unmatched Route"
+// 3. app/+native-intent.tsx: expo-router only, or payers see "Unmatched Route"
 import { createPaymentReturnRedirect } from '@getpayin/expo-checkout';
 
 export const redirectSystemPath = createPaymentReturnRedirect('myapp://payment-return');
@@ -71,7 +71,7 @@ When integrating:
 4. **Keep `googlePayInApp: false`** unless the user confirms Google has approved their
    app. Setting it early gives Android payers an app screen with no Google Pay button and
    no error.
-5. **Pass `checkoutUrl` in memory.** Never through a route or navigation parameter —
+5. **Pass `checkoutUrl` in memory.** Never through a route or navigation parameter:
    expo-router decodes it twice and the checkout answers HTTP 403.
 6. **Add the expo-router `+native-intent.tsx` file** if the project uses expo-router.
    Check for an `app/` directory to tell.
@@ -94,18 +94,18 @@ When integrating:
 
 Match the symptom first; most of these failures are silent.
 
-| Symptom                                   | First thing to check                                                                                                          |
-| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Payment works, app never gets the result  | Running in Expo Go; then the scheme in all three places                                                                       |
-| "Unmatched Route" after paying            | Missing `app/+native-intent.tsx`                                                                                              |
-| HTTP 403 from the checkout link           | `checkoutUrl` passed through a route parameter; or `(`, `)`, `'` in the order title                                           |
-| No Apple Pay button on iPhone             | A script was added to the page; no card in Wallet                                                                             |
-| No Google Pay button on Android           | Google has not approved the app — use `googlePayInApp: false`; WebView < 137; Play services < 25.18.30; overridden user agent |
-| Blank white checkout screen               | Load failure; `onLoadError` not handled in a custom screen                                                                    |
-| `GetPayInProviderMissingError`            | `GetPayInProvider` not mounted — note iOS always uses the in-app screen                                                       |
-| `GetPayInSessionBusyError`                | Double tap on Pay; guard with `GetPayInCheckout.busy`                                                                         |
-| Real payment came back `cancelled`        | Scheme mismatch; the webhook is the authority                                                                                 |
-| `not_paid` mentioning a different invoice | `expectedInvoiceId` rejected a mismatched link — check which invoice the server created                                       |
+| Symptom                                   | First thing to check                                                                                                            |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Payment works, app never gets the result  | Running in Expo Go; then the scheme in all three places                                                                         |
+| "Unmatched Route" after paying            | Missing `app/+native-intent.tsx`                                                                                                |
+| HTTP 403 from the checkout link           | `checkoutUrl` passed through a route parameter; or `(`, `)`, `'` in the order title                                             |
+| No Apple Pay button on iPhone             | A script was added to the page; no card in Wallet                                                                               |
+| No Google Pay button on Android           | Google has not approved the app, so use `googlePayInApp: false`; WebView < 137; Play services < 25.18.30; overridden user agent |
+| Blank white checkout screen               | Load failure; `onLoadError` not handled in a custom screen                                                                      |
+| `GetPayInProviderMissingError`            | `GetPayInProvider` not mounted; note iOS always uses the in-app screen                                                          |
+| `GetPayInSessionBusyError`                | Double tap on Pay; guard with `GetPayInCheckout.busy`                                                                           |
+| Real payment came back `cancelled`        | Scheme mismatch; the webhook is the authority                                                                                   |
+| `not_paid` mentioning a different invoice | `expectedInvoiceId` rejected a mismatched link; check which invoice the server created                                          |
 
 ## API surface
 
@@ -133,7 +133,7 @@ Errors, all extending `GetPayInCheckoutError`: `GetPayInConfigError`,
 | Android  | `false` (default) | The phone's browser sheet | Google Pay, card |
 | Android  | `true`            | The app's own screen      | Google Pay, card |
 
-Google Pay is never offered on iPhone — Google allows it only in Safari.
+Google Pay is never offered on iPhone. Google allows it only in Safari.
 
 ## Full documentation
 

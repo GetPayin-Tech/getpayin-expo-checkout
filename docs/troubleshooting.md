@@ -43,7 +43,7 @@ The link's signature no longer matches what was signed.
 In the app's own screen (`googlePayInApp: true`):
 
 1. **Google has not approved your app yet.** This is the usual answer. Set
-   `googlePayInApp: false` until it has — Google Pay then works in the browser sheet with
+   `googlePayInApp: false` until it has. Google Pay then works in the browser sheet with
    no approval. See [Google Pay on Android](google-pay.md).
 2. **Android System WebView is older than 137**, or **Google Play services older than
    25.18.30**.
@@ -70,7 +70,7 @@ tested the Android browser sheet will hit this the first time it runs on an iPho
 
 ## `GetPayInSessionBusyError`
 
-Another checkout is still open — almost always a double tap on Pay. Guard the button with
+Another checkout is still open, almost always a double tap on Pay. Guard the button with
 `GetPayInCheckout.busy`, or catch and ignore it.
 
 ## A real payment came back as `cancelled`
@@ -100,13 +100,13 @@ The package deliberately refuses some links rather than handing them to the phon
 
 1. Script schemes: `javascript:`, `vbscript:`.
 2. Your own app's schemes, when the link is not the return link. That is every scheme your
-   app answers to, not only the return link's — see [Security model](security.md).
+   app answers to, not only the return link's. See [Security model](security.md).
 3. Schemes with no part in paying: `market:`, `itms-apps:`, `itms-services:`, `sms:`,
    `smsto:`, `mms:`, `shortcuts:`, `content:`, `android-app:`.
 4. Anything a frame inside the checkout page asks for, other than ordinary web content.
 
 `tel:`, `mailto:` and `intent:` are allowed. If a legitimate flow needs one of the refused
-ones, it is a bug — please report it with the bank's name.
+ones, it is a bug, so please report it with the bank's name.
 
 ## Reporting a bug
 
@@ -114,4 +114,4 @@ Include the package version, the phone and OS version, whether it is a dev or st
 which presentation was used (`GetPayInCheckout.presentationFor({})` tells you), and the
 `CheckoutResult` you received. Never include real card numbers or live credentials.
 
-For a suspected vulnerability, report privately — see [`SECURITY.md`](../SECURITY.md).
+For a suspected vulnerability, report privately. See [`SECURITY.md`](../SECURITY.md).

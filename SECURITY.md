@@ -29,7 +29,7 @@ holds no secret, signs nothing and stores nothing.
 1. **No credentials in the app.** The hash token belongs on your server, which signs
    `POST /api/integration/init` and hands the app only a `checkout_url`. If you find a
    path by which this package could see or transmit a signing secret, that is a
-   vulnerability — report it.
+   vulnerability. Report it.
 2. **Card details never reach your app or ours.** The payer enters them on the hosted
    checkout, inside CyberSource's own frames. The package adds no script to that page, so
    it has no way to read them.
