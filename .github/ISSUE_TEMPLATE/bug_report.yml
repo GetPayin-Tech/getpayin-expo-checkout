@@ -1,0 +1,72 @@
+name: Bug report
+description: Something in the package does not behave as documented.
+labels: [bug]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please do not include real card numbers, real payer details or live credentials.
+
+  - type: input
+    id: version
+    attributes:
+      label: Package version
+      placeholder: 0.1.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Where it happens
+      options:
+        - iPhone, app's own screen
+        - Android, app's own screen (googlePayInApp true)
+        - Android, browser sheet (googlePayInApp false)
+        - Both platforms
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Build and OS version
+      placeholder: EAS build, iOS 18.2 / Android 15, Expo SDK 52
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened
+      description: Include the `CheckoutResult` you received, if you got one.
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      description: The smallest set of steps and options that shows it.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: prerequisites
+    attributes:
+      label: Before filing
+      options:
+        - label: I am using a development or store build, not Expo Go.
+          required: true
+        - label: My integration is of type "Mobile App" and its return scheme matches my app's scheme.
+          required: true
+        - label: I pass `checkoutUrl` in memory, not through a navigation parameter.
+          required: true

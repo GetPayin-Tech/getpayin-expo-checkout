@@ -1,0 +1,9 @@
+blank_issues_enabled: false
+
+contact_links:
+  - name: Integration help
+    url: https://github.com/GetPayin-Tech/getpayin-expo-checkout#readme
+    about: Setting the package up, Google Pay approval and the server side are covered in the README.
+  - name: Report a security problem
+    url: https://github.com/GetPayin-Tech/getpayin-expo-checkout/security/advisories/new
+    about: Please report vulnerabilities privately rather than as a public issue.

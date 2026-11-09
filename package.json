@@ -1,0 +1,106 @@
+{
+  "name": "@getpayin/expo-checkout",
+  "version": "0.1.0",
+  "description": "Take Apple Pay, Google Pay and card payments inside an Expo app with the hosted GetPayIn checkout.",
+  "keywords": [
+    "getpayin",
+    "expo",
+    "react-native",
+    "payments",
+    "apple-pay",
+    "google-pay",
+    "checkout"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GetPayin-Tech/getpayin-expo-checkout.git"
+  },
+  "homepage": "https://github.com/GetPayin-Tech/getpayin-expo-checkout#readme",
+  "bugs": {
+    "url": "https://github.com/GetPayin-Tech/getpayin-expo-checkout/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "react-native": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "react-native": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "docs",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "lint:md": "markdownlint '**/*.md' --ignore node_modules",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "verify": "npm run lint && npm run lint:md && npm run format:check && npm run typecheck && npm run test:coverage && npm run build && npm run smoke && npm run check:exports",
+    "prepublishOnly": "npm run build",
+    "smoke": "node scripts/smoke-dist.mjs",
+    "check:exports": "publint"
+  },
+  "peerDependencies": {
+    "expo-linking": ">=6.0.0",
+    "expo-web-browser": ">=13.0.0",
+    "react": ">=18.0.0",
+    "react-native": ">=0.73.0",
+    "react-native-webview": ">=13.15.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@testing-library/react-native": "^13.0.1",
+    "@types/react": "^19.0.0",
+    "@vitest/coverage-v8": "^4.1.10",
+    "eslint": "^10.8.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.0.0",
+    "expo-linking": "^7.0.0",
+    "expo-web-browser": "^14.0.0",
+    "markdownlint-cli": "^0.45.0",
+    "prettier": "^3.9.6",
+    "publint": "^0.3.22",
+    "react": "^19.0.0",
+    "react-native": "^0.79.0",
+    "react-native-webview": "^13.15.0",
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.65.0",
+    "vitest": "^4.1.10"
+  },
+  "allowScripts": {
+    "esbuild@0.27.7": true
+  }
+}

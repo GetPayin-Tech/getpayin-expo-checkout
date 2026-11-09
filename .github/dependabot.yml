@@ -1,0 +1,23 @@
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      # The package ships zero runtime dependencies — react-native, the web view and the
+      # two Expo modules are peers. Everything here is tooling, so grouping keeps the
+      # noise to one PR a week.
+      dev-dependencies:
+        patterns: ['*']
+        update-types: ['minor', 'patch']
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ['*']

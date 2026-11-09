@@ -1,0 +1,23 @@
+name: Feature request
+description: Suggest something the package should do.
+labels: [enhancement]
+
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What you are trying to do
+      description: The payment flow you want, not the API you have in mind for it.
+    validations:
+      required: true
+
+  - type: textarea
+    id: workaround
+    attributes:
+      label: What you do today
+      description: How you work around it, and what that costs you.
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like
