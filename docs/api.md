@@ -180,6 +180,7 @@ and diagnostics. You do not need them for a normal integration.
 | `createNavigationHandler(options)`                              | The web view's navigation decision, for embedding the checkout yourself.                                     |
 | `hostAppSchemes()`                                              | Every URL scheme the host app answers to, read from its Expo app config.                                     |
 | `schemesFromAppConfig(config)`                                  | The same rule over a config you hand it, for an app that holds its own.                                      |
+| `isTopFrameRequest(request, platform)`                          | Whether the page itself asked for a navigation, with Android's missing `isTopFrame` read as yes.             |
 | `buildCheckoutWebViewProps(platform)`                           | The web view settings the wallets need.                                                                      |
 
 ### Embedding the checkout in a web view of your own
@@ -191,7 +192,7 @@ app answers to, so neither has a default for it:
 classifyNavigation(url, {
   returnUrl: 'myapp://payment-return',
   ownSchemes: hostAppSchemes(),
-  isTopFrame: request.isTopFrame,
+  isTopFrame: isTopFrameRequest(request, Platform.OS),
 });
 
 const handler = createNavigationHandler({
@@ -202,7 +203,7 @@ const handler = createNavigationHandler({
   onExternal: (url) => Linking.openURL(url).catch(reportFailure),
 });
 
-handler({ url: request.url, isTopFrame: request.isTopFrame });
+handler({ url: request.url, isTopFrame: isTopFrameRequest(request, Platform.OS) });
 ```
 
 `ownSchemes` is every other scheme the app answers to, and it is required: without it only
@@ -210,7 +211,14 @@ the return link's own scheme is refused, and a page inside the checkout could re
 app's other deep-link routes. `hostAppSchemes()` reads them from the Expo app config.
 
 `isTopFrame` says whether the page itself asked for the navigation, and it is required for
-the same reason. `react-native-webview` reports it on the request. A navigation from a
-frame inside the page can only ever load ordinary web content: a 3-D Secure page is hosted
-by the issuer and knows the real invoice id, so an `<iframe>` pointing itself at the return
-link would otherwise end the checkout as `paid` with nothing paid.
+the same reason. A navigation from a frame inside the page can only ever load ordinary web
+content: a 3-D Secure page is hosted by the issuer and knows the real invoice id, so an
+`<iframe>` pointing itself at the return link would otherwise end the checkout as `paid`
+with nothing paid.
+
+Pass it through `isTopFrameRequest`, not straight from the request. `react-native-webview`
+reports `isTopFrame` on iOS, but on Android it leaves the field out of every request in a
+release build. Passed as it arrives, every Android navigation reads as a frame's, the return
+link is refused, and a paid checkout never comes back to your app. `isTopFrameRequest`
+reads a missing flag on Android as the page itself, since Android cannot tell frames apart
+through this library, and as a frame everywhere else.

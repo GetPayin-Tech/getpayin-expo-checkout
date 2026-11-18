@@ -87,6 +87,10 @@ around it. The gate is the point.
 5. **A frame inside the checkout page can only ever `load`.** `isTopFrame` is required, not
    defaulted: a 3-D Secure page knows the real invoice id, so an `<iframe>` aimed at the
    return link would report a payment nobody made, and `expectedInvoiceId` is no defence.
+   The view reads the flag through `webview/topFrame.ts`: Android's `react-native-webview`
+   never sends it in a release build, so a missing flag there means the page, or no Android
+   checkout in the app's own screen could ever end. Never pass `request.isTopFrame` straight
+   through.
 6. **Both sides of an invoice comparison go through `core/invoiceId.ts`.** The server sends
    a number and the link carries text; comparing them as they arrive reports every paid
    checkout as `not_paid`.

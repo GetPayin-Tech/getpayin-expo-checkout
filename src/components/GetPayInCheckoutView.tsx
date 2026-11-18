@@ -10,7 +10,9 @@ import { buildCheckoutSource } from '../webview/checkoutSource';
 import type { CheckoutSource } from '../webview/checkoutSource';
 import { openExternalLink } from '../webview/externalLink';
 import { createNavigationHandler } from '../webview/navigationHandler';
+import type { NavigationRequest } from '../webview/navigationHandler';
 import { buildCheckoutWebViewProps } from '../webview/platformProps';
+import { isTopFrameRequest } from '../webview/topFrame';
 
 const LOAD_FAILED = 'The checkout could not be loaded. Check the connection and try again.';
 const LINK_FAILED =
@@ -22,9 +24,10 @@ const LINK_FAILED =
  *
  * `react-native-webview` names this `ShouldStartLoadRequest` but does not re-export it from
  * the package root, and `WebViewNavigation` alone is missing `isTopFrame` — the field that
- * says whether the page or a frame inside it asked for the navigation.
+ * says whether the page or a frame inside it asked for the navigation. It is optional here
+ * because Android leaves it out (see `isTopFrameRequest`).
  */
-type ShouldStartLoadRequest = WebViewNavigation & { readonly isTopFrame: boolean };
+type ShouldStartLoadRequest = WebViewNavigation & { readonly isTopFrame?: boolean };
 
 /**
  * The hosted checkout drawn in the app's own screen.
@@ -89,11 +92,15 @@ export function GetPayInCheckoutView(props: GetPayInCheckoutViewProps): React.JS
    * it through a ref, which is read when a navigation happens rather than while rendering.
    */
   const active = useRef<
-    { session: CheckoutSource; handler: (request: ShouldStartLoadRequest) => boolean } | undefined
+    { session: CheckoutSource; handler: (request: NavigationRequest) => boolean } | undefined
   >(undefined);
 
   const handleNavigation = useCallback(
     (request: ShouldStartLoadRequest) => {
+      const navigation: NavigationRequest = {
+        url: request.url,
+        isTopFrame: isTopFrameRequest(request, Platform.OS),
+      };
       const current = active.current;
 
       if (current === undefined || current.session !== session) {
@@ -115,10 +122,10 @@ export function GetPayInCheckoutView(props: GetPayInCheckoutViewProps): React.JS
 
         active.current = { session, handler };
 
-        return handler(request);
+        return handler(navigation);
       }
 
-      return current.handler(request);
+      return current.handler(navigation);
     },
     [session, ownSchemes],
   );

@@ -39,3 +39,5 @@ export type { CheckoutWebViewPlatformProps } from './webview/platformProps';
 export { createNavigationHandler } from './webview/navigationHandler';
 export type { NavigationHandlerOptions, NavigationRequest } from './webview/navigationHandler';
 export { hostAppSchemes, schemesFromAppConfig } from './webview/appSchemes';
+export { isTopFrameRequest } from './webview/topFrame';
+export type { TopFrameReport } from './webview/topFrame';

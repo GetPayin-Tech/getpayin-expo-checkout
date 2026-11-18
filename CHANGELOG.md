@@ -55,7 +55,10 @@ First release.
   `classifyNavigation(url, { returnUrl, ownSchemes, isTopFrame })`, and
   `createNavigationHandler`'s handler takes `{ url, isTopFrame }` rather than a URL.
   `ownSchemes` and `isTopFrame` are both required: each was a fail-open default on the one
-  path the documentation pointed integrators at.
+  path the documentation pointed integrators at. Read `isTopFrame` through the new
+  `isTopFrameRequest(request, platform)`: Android's `react-native-webview` leaves it out of
+  every request in a release build, and taken as it arrived, a paid checkout in the app's
+  own screen on Android never came back to the app.
 - `onLoadError` takes a second argument. The first is the text for the payer, in the app's
   language; the second is the developer-facing cause, which names the option and the value
   it got. An unusable `expectedInvoiceId` used to put that text on the payment screen.
