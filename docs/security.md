@@ -66,12 +66,12 @@ opens on top of a checkout that has already been paid.
 That means every navigation goes through the package's own handler, which sorts them into
 four outcomes:
 
-| Outcome    | What happens           | Examples                                                         |
-| ---------- | ---------------------- | ---------------------------------------------------------------- |
-| `return`   | The checkout ends.     | your return link, from the page itself                           |
-| `load`     | Stays in the web view. | `https:`, `http:`, `about:`, `data:`, `blob:`, `file:`           |
-| `external` | Handed to the phone.   | a bank app for 3-D Secure, `tel:`, `mailto:`, `intent:`          |
-| `block`    | Refused.               | `javascript:`, your own app's scheme, `market:`, `sms:`, a frame |
+| Outcome    | What happens           | Examples                                                               |
+| ---------- | ---------------------- | ---------------------------------------------------------------------- |
+| `return`   | The checkout ends.     | your return link, from the page itself                                 |
+| `load`     | Stays in the web view. | `https:`, `http:`, `about:`, `data:`, `blob:`, `file:`                 |
+| `external` | Handed to the phone.   | a bank app for 3-D Secure, `tel:`, `mailto:`, `intent:`                |
+| `block`    | Refused.               | `javascript:`, your own app's scheme, `market:`, `sms:`, a frame (iOS) |
 
 Three of those deserve explanation.
 
@@ -103,6 +103,12 @@ app. A 3-D Secure page knows the real invoice id, so an `<iframe>` pointing itse
 `myapp://payment-return?success=1&invoice_id=<the real one>` would otherwise report a
 payment that was never made, and `expectedInvoiceId` would not catch it, because the
 invoice id is genuine.
+
+This holds on iOS only. On Android, `react-native-webview` does not say whether a frame or
+the page asked for a navigation, so the package treats every Android navigation as the
+page's: a frame there can still end the checkout or open another app. That is one more
+reason the `invoice.paid` webhook on your server, not the app's result, decides whether you
+deliver.
 
 The reason this matters: a 3-D Secure page is hosted by the **issuer**, not by GetPayIn.
 The page driving these navigations is not one this package controls.

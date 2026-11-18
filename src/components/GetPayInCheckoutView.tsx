@@ -12,7 +12,7 @@ import { openExternalLink } from '../webview/externalLink';
 import { createNavigationHandler } from '../webview/navigationHandler';
 import type { NavigationRequest } from '../webview/navigationHandler';
 import { buildCheckoutWebViewProps } from '../webview/platformProps';
-import { isTopFrameRequest } from '../webview/topFrame';
+import { toNavigationRequest } from '../webview/topFrame';
 
 const LOAD_FAILED = 'The checkout could not be loaded. Check the connection and try again.';
 const LINK_FAILED =
@@ -97,10 +97,7 @@ export function GetPayInCheckoutView(props: GetPayInCheckoutViewProps): React.JS
 
   const handleNavigation = useCallback(
     (request: ShouldStartLoadRequest) => {
-      const navigation: NavigationRequest = {
-        url: request.url,
-        isTopFrame: isTopFrameRequest(request, Platform.OS),
-      };
+      const navigation = toNavigationRequest(request, Platform.OS);
       const current = active.current;
 
       if (current === undefined || current.session !== session) {

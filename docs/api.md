@@ -217,8 +217,9 @@ content: a 3-D Secure page is hosted by the issuer and knows the real invoice id
 with nothing paid.
 
 Pass it through `isTopFrameRequest`, not straight from the request. `react-native-webview`
-reports `isTopFrame` on iOS, but on Android it leaves the field out of every request in a
-release build. Passed as it arrives, every Android navigation reads as a frame's, the return
-link is refused, and a paid checkout never comes back to your app. `isTopFrameRequest`
-reads a missing flag on Android as the page itself, since Android cannot tell frames apart
-through this library, and as a frame everywhere else.
+reports `isTopFrame` on iOS, but on Android it leaves the field out of every request, in
+debug and release builds alike. Passed as it arrives, every Android navigation reads as a
+frame's, the return link is refused, and a paid checkout never comes back to your app.
+`isTopFrameRequest` reads a missing flag on Android as the page itself, and as a frame
+everywhere else. So the frame rule holds on iOS only: on Android a frame can still end the
+checkout, and the `invoice.paid` webhook on your server is what to trust.

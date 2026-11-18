@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { CheckoutStatus } from '../src/types';
 import { createNavigationHandler } from '../src/webview/navigationHandler';
-import { isTopFrameRequest } from '../src/webview/topFrame';
+import { isTopFrameRequest, toNavigationRequest } from '../src/webview/topFrame';
 
 const RETURN_URL = 'myapp://payment-return';
 
@@ -21,7 +21,7 @@ describe('isTopFrameRequest', () => {
     }
   });
 
-  // react-native-webview 14 leaves the flag out of every Android request in a release build.
+  // react-native-webview 14 leaves the flag out of every Android request, debug or release.
   it('reads a missing flag on Android as the page itself', () => {
     expect(isTopFrameRequest({}, 'android')).toBe(true);
   });
@@ -29,6 +29,19 @@ describe('isTopFrameRequest', () => {
   it('reads a missing flag anywhere else as a frame', () => {
     expect(isTopFrameRequest({}, 'ios')).toBe(false);
     expect(isTopFrameRequest({}, 'web')).toBe(false);
+  });
+});
+
+describe('toNavigationRequest', () => {
+  it('keeps the URL and reads the flag through isTopFrameRequest', () => {
+    const request: WebViewRequest = { url: PAID_RETURN };
+
+    expect(toNavigationRequest(request, 'android')).toEqual({ url: PAID_RETURN, isTopFrame: true });
+    expect(toNavigationRequest(request, 'ios')).toEqual({ url: PAID_RETURN, isTopFrame: false });
+    expect(toNavigationRequest({ url: PAID_RETURN, isTopFrame: false }, 'android')).toEqual({
+      url: PAID_RETURN,
+      isTopFrame: false,
+    });
   });
 
   it('lets an Android return link with no flag finish the checkout', () => {
@@ -40,11 +53,8 @@ describe('isTopFrameRequest', () => {
       onComplete,
       onExternal: vi.fn(),
     });
-    const request: WebViewRequest = { url: PAID_RETURN };
 
-    expect(handler({ url: request.url, isTopFrame: isTopFrameRequest(request, 'android') })).toBe(
-      false,
-    );
+    expect(handler(toNavigationRequest({ url: PAID_RETURN }, 'android'))).toBe(false);
     expect(onComplete).toHaveBeenCalledWith(
       expect.objectContaining({ status: CheckoutStatus.Paid, invoiceId: '4512' }),
     );
@@ -58,11 +68,8 @@ describe('isTopFrameRequest', () => {
       onComplete,
       onExternal: vi.fn(),
     });
-    const request: WebViewRequest = { url: PAID_RETURN };
 
-    expect(handler({ url: request.url, isTopFrame: isTopFrameRequest(request, 'ios') })).toBe(
-      false,
-    );
+    expect(handler(toNavigationRequest({ url: PAID_RETURN }, 'ios'))).toBe(false);
     expect(onComplete).not.toHaveBeenCalled();
   });
 });
