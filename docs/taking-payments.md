@@ -224,12 +224,10 @@ decoding of names, and refuse a field that appears twice, `signature` included. 
 reader could take a different `invoice_id` from the one the signature covers, and accept a
 genuine link for one invoice as payment for another.
 
-A valid signature is still not enough on its own. The signature covers `success`,
-`invoice_id`, `invoice_status` and `message` joined with no separator, so a genuine link
-for invoice 4512 with status `PAID` also checks out as invoice 451 with status `2PAID`.
-Before you trust it, also require `invoice_id` to be digits only and `invoice_status` to be
-one of GetPayIn's statuses (`PAID`, `UNPAID`, `PARTIALLY_PAID`, `AUTHORIZED`, …), and that
-`invoice_id` is the invoice you created for this order. The `invoice.paid` webhook goes
+A valid signature is still not enough on its own. Before you trust it, also require
+`invoice_id` to be digits only, `invoice_status` to be one of GetPayIn's statuses (`PAID`,
+`UNPAID`, `PARTIALLY_PAID`, `AUTHORIZED`, …), and `invoice_id` to be the invoice you
+created for this order. The `invoice.paid` webhook goes
 from GetPayIn straight to your server and never passes through the phone, which is why it
 is the one to fulfil orders on.
 
