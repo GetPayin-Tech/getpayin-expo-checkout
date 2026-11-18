@@ -150,7 +150,8 @@ because GetPayIn always sends one.
 
 - [ ] The hash token is on your server only: not in the app, not in version control, not
       in any client-side config.
-- [ ] Your server confirms `invoice.paid` before fulfilling.
+- [ ] Your server confirms `invoice.paid`, with `success` and status `PAID`, before
+      fulfilling.
 - [ ] `expectedInvoiceId` is passed on every `open()` call.
 - [ ] The Mobile App Return Scheme is specific to your app.
 - [ ] You use a development or store build, not Expo Go.

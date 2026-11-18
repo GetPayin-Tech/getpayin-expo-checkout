@@ -90,13 +90,14 @@ other app on the phone can open your app with
 
 Confirm with the `invoice.paid` webhook on your server before you deliver.
 [`@getpayin/getpayin`](https://www.npmjs.com/package/@getpayin/getpayin) checks webhook
-signatures for you:
+signatures for you. Deliver only when the webhook also says `success` and `PAID`, and the
+invoice is one you created:
 
 ```ts
-const event = getpayin.webhooks.verify(rawBody, signatureHeader);
+const event = getpayin.webhooks.verify(rawBody);
 
-if (event.event === 'invoice.paid') {
-  await fulfil(event.data.invoiceId);
+if (event.event === 'invoice.paid' && event.success && event.invoiceStatus === 'PAID') {
+  await fulfil(event.invoiceId);
 }
 ```
 

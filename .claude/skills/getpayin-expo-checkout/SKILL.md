@@ -76,7 +76,9 @@ When integrating:
 6. **Add the expo-router `+native-intent.tsx` file** if the project uses expo-router.
    Check for an `app/` directory to tell.
 7. **Wire the server side**: `POST /api/integration/init` to create, `invoice.paid` webhook
-   to confirm. Use `@getpayin/getpayin` there; it verifies webhook signatures.
+   to confirm. Use `@getpayin/getpayin` there; it verifies webhook signatures. Deliver only
+   when the verified event also has `success` true, `invoiceStatus` `PAID`, and an invoice
+   id this server created.
 
 ## Never do these
 
