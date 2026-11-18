@@ -4,7 +4,7 @@ All notable changes to this package are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the package follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.1] - 2026-11-18
 
 ### Fixed
 
@@ -22,6 +22,9 @@ All notable changes to this package are documented here. The format follows
   only. Android cannot tell a frame from the page through `react-native-webview`, so there
   a frame can end the checkout or open another app, as before 0.1.0. Confirm payments with
   the `invoice.paid` webhook, as before.
+- Docs: the webhook example matches `@getpayin/getpayin` and delivers only when the event
+  says `success` and `PAID`. The Google Pay approval steps follow Google's console: choose
+  Gateway, with no gateway values to enter, and upload five screenshots.
 
 ### Added
 

@@ -1,6 +1,6 @@
 {
   "name": "@getpayin/expo-checkout",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Take Apple Pay, Google Pay and card payments inside an Expo app with the hosted GetPayIn checkout.",
   "keywords": [
     "getpayin",
