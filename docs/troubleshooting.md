@@ -103,7 +103,9 @@ The package deliberately refuses some links rather than handing them to the phon
    app answers to, not only the return link's. See [Security model](security.md).
 3. Schemes with no part in paying: `market:`, `itms-apps:`, `itms-services:`, `sms:`,
    `smsto:`, `mms:`, `shortcuts:`, `content:`, `android-app:`.
-4. Anything a frame inside the checkout page asks for, other than ordinary web content.
+4. Anything a frame inside the checkout page asks for, other than ordinary web content. On
+   iOS only: Android does not report frames, so there every navigation counts as the
+   page's.
 
 `tel:`, `mailto:` and `intent:` are allowed. If a legitimate flow needs one of the refused
 ones, it is a bug, so please report it with the bank's name.

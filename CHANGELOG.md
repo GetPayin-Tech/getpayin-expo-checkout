@@ -4,6 +4,31 @@ All notable changes to this package are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the package follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- On Android, a checkout in the app's own screen (`googlePayInApp: true`, or
+  `GetPayInCheckoutView`) never came back to the app: the payer was left on GetPayIn's
+  "Completing your payment..." page, and Close reported `cancelled` whatever the payment
+  did. 0.1.0 accepts the return link only when the web view reports the navigation as the
+  page's own (`isTopFrame`), and `react-native-webview` never sends that flag on Android, in
+  any build, so every Android navigation was refused as a frame's. A missing flag on Android
+  now means the page. The browser sheet was not affected.
+
+### Changed
+
+- The rule that a frame inside the checkout page can only load web content now holds on iOS
+  only. Android cannot tell a frame from the page through `react-native-webview`, so there
+  a frame can end the checkout or open another app, as before 0.1.0. Confirm payments with
+  the `invoice.paid` webhook, as before.
+
+### Added
+
+- `isTopFrameRequest(request, platform)`, which reads `isTopFrame` from a web view request
+  with Android's missing flag read as the page. Use it when you embed the checkout in a web
+  view of your own: passing `request.isTopFrame` straight through has the same Android bug.
+
 ## [0.1.0] - 2026-11-09
 
 First release.
