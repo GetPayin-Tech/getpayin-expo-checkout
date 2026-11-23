@@ -79,11 +79,14 @@ The browser sheet reported its own dismissal and no return link followed within 
 period. Check that the return scheme matches in all three places, as above. Your server's
 `invoice.paid` webhook is the authority here, and it will have fired.
 
-## A result came back as `not_paid` with a message about a different invoice
+## A result came back as `not_paid` with `code: 'wrong_invoice'`
 
-`expectedInvoiceId` did its job: the return link named an invoice other than the one this
-checkout was opened for. Either something forged the link, or your code passed the wrong
-`expectedInvoiceId`. Check which invoice your server actually created.
+`expectedInvoiceId` did its job: the return link did not name the invoice this checkout
+was opened for. When it named another invoice, either a genuine result from an earlier
+checkout arrived late, something forged the link, or your code passed the wrong
+`expectedInvoiceId`. When it named no invoice at all, the link was made up: GetPayIn's
+return link always names the invoice. Check which invoice your server actually created,
+and check that invoice, not `result.invoiceId`, before you ask the payer to pay again.
 
 ## A 3-D Secure bank app does not open
 

@@ -60,9 +60,10 @@ answers HTTP 403.
 `cancelled` only ever comes from the payer closing the screen. A hosted checkout the payer
 abandons and returns from reports `not_paid`.
 
-`invoiceId` is present when the return link carried one. `invoiceStatus` is the invoice
-state the link reported (`PAID`, `UNPAID`, `PARTIALLY_PAID`, `AUTHORIZED`), and only `PAID`
-is reported as `paid`. `returnUrl` is the raw link the result came from, which is useful in
+`invoiceId` is present when the return link carried one. It is the invoice the link names,
+which for `wrong_invoice` is not the one this checkout was opened for. `invoiceStatus` is
+the invoice state the link reported (`PAID`, `UNPAID`, `PARTIALLY_PAID`, `AUTHORIZED`), and
+only `PAID` is reported as `paid`. `returnUrl` is the raw link the result came from, which is useful in
 a bug report.
 
 ### `code` on a `not_paid`
@@ -71,12 +72,12 @@ A `not_paid` the package decided for itself carries a `code`; a genuine decline 
 none. It is the stable value to branch on and to look a message of your own up by, where
 `message` is text for the payer and changes with your app's language.
 
-| `code`                      | What happened                                           | What to do                                                           |
-| --------------------------- | ------------------------------------------------------- | -------------------------------------------------------------------- |
-| absent                      | The checkout declined or failed the payment.            | Show `message`. Offer a retry.                                       |
-| `unreadable_return_link`    | The link's own fields could not be read.                | Check the invoice on your server. Alert on this one; it is a bug.    |
-| `wrong_invoice`             | The link named another invoice.                         | Check the invoice on your server. Do not retry blindly.              |
-| `unexpected_invoice_status` | `success=1` with an `invoice_status` other than `PAID`. | Check the invoice on your server. An authorised invoice is not paid. |
+| `code`                      | What happened                                           | What to do                                                                                           |
+| --------------------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| absent                      | The checkout declined or failed the payment.            | Show `message`. Offer a retry.                                                                       |
+| `unreadable_return_link`    | The link's own fields could not be read.                | Check the invoice on your server. Alert on this one; it is a bug.                                    |
+| `wrong_invoice`             | The link named another invoice, or none.                | Check your `expectedInvoiceId` invoice on your server, not `result.invoiceId`. Do not retry blindly. |
+| `unexpected_invoice_status` | `success=1` with an `invoice_status` other than `PAID`. | Check the invoice on your server. An authorised invoice is not paid.                                 |
 
 The payer may well have paid in all three of those, so none of them is a reason to ask for
 payment again before the invoice has been checked on your server.

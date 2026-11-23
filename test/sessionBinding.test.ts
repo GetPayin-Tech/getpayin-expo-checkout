@@ -66,7 +66,7 @@ describe('resolveReturn binds a link to the invoice it was opened for', () => {
     });
 
     expect(result.status).toBe(CheckoutStatus.NotPaid);
-    expect(result.message).toMatch(/different invoice/i);
+    expect(result.message).toMatch(/did not name the invoice this checkout was opened for/i);
   });
 
   it('refuses a paid link that names a different invoice', () => {
@@ -75,7 +75,7 @@ describe('resolveReturn binds a link to the invoice it was opened for', () => {
     });
 
     expect(result.status).toBe(CheckoutStatus.NotPaid);
-    expect(result.message).toMatch(/different invoice/i);
+    expect(result.message).toMatch(/did not name the invoice this checkout was opened for/i);
   });
 
   it('refuses a paid link that names no invoice at all', () => {
@@ -90,12 +90,113 @@ describe('resolveReturn binds a link to the invoice it was opened for', () => {
     );
   });
 
-  it('leaves a decline alone rather than rewriting the reason the payer was given', () => {
+  it('marks a decline that names no invoice as wrong_invoice: a genuine return link always names one', () => {
+    // Anything on the phone can open the return link, so a bare decline must not make the
+    // app offer a retry while this checkout's invoice may be paid.
     const result = resolveReturn(`${RETURN_URL}?success=0&message=Card+declined`, {
       expectedInvoiceId: 'INV-1',
     });
 
     expect(result.status).toBe(CheckoutStatus.NotPaid);
+    expect(result.code).toBe(CheckoutResultCode.WrongInvoice);
+    // The message says what is true for a link that named no invoice as well.
+    expect(result.message).toMatch(/did not name the invoice this checkout was opened for/i);
+  });
+
+  it('keeps unreadable_return_link for an unreadable link, which names no invoice either', () => {
+    const result = resolveReturn(`${RETURN_URL}?success=maybe`, { expectedInvoiceId: 'INV-1' });
+
+    expect(result.status).toBe(CheckoutStatus.NotPaid);
+    expect(result.code).toBe(CheckoutResultCode.UnreadableReturnLink);
+  });
+
+  it('takes a decline that names no invoice at its word when no invoice was supplied to bind to', () => {
+    const result = resolveReturn(`${RETURN_URL}?success=0&message=Card+declined`, {});
+
+    expect(result.code).toBeUndefined();
     expect(result.message).toBe('Card declined');
+  });
+
+  it('leaves a decline for the expected invoice alone', () => {
+    const result = resolveReturn(
+      `${RETURN_URL}?success=0&invoice_id=4512&invoice_status=UNPAID&message=Card+declined`,
+      { expectedInvoiceId: 4512 },
+    );
+
+    expect(result.status).toBe(CheckoutStatus.NotPaid);
+    expect(result.code).toBeUndefined();
+    expect(result.message).toBe('Card declined');
+  });
+
+  it.each([
+    ['leading zeros in the link', '04512', 4512],
+    ['text on both sides', '4512', '4512'],
+    ['spaces around the expected id', '4512', ' 4512 '],
+  ])(
+    'compares a decline in one form: %s still leaves it alone',
+    (_label, linkInvoiceId, expectedInvoiceId) => {
+      const result = resolveReturn(
+        `${RETURN_URL}?success=0&invoice_id=${linkInvoiceId}&message=Card+declined`,
+        { expectedInvoiceId },
+      );
+
+      expect(result.code).toBeUndefined();
+      expect(result.message).toBe('Card declined');
+    },
+  );
+
+  it('counts a decline whose invoice id is present but blank as naming another invoice', () => {
+    const result = resolveReturn(`${RETURN_URL}?success=0&invoice_id=+&message=Card+declined`, {
+      expectedInvoiceId: 4512,
+    });
+
+    expect(result.status).toBe(CheckoutStatus.NotPaid);
+    expect(result.code).toBe(CheckoutResultCode.WrongInvoice);
+  });
+
+  it.each([
+    ['an empty string', ''],
+    ['null from untyped code', null as unknown as string],
+  ])(
+    'fails closed on %s: a decline that names an invoice binds to nothing, so it is wrong_invoice',
+    (_label, expectedInvoiceId) => {
+      const result = resolveReturn(`${RETURN_URL}?success=0&invoice_id=4512`, {
+        expectedInvoiceId,
+      });
+
+      expect(result.code).toBe(CheckoutResultCode.WrongInvoice);
+    },
+  );
+
+  it('marks a decline for a different invoice as wrong_invoice, not as a decline to retry', () => {
+    // A genuine decline from an earlier checkout, arriving while the checkout for 4512 is open.
+    const result = resolveReturn(
+      `${RETURN_URL}?success=0&invoice_id=4400&invoice_status=UNPAID&message=Card+declined`,
+      { expectedInvoiceId: 4512 },
+    );
+
+    expect(result.status).toBe(CheckoutStatus.NotPaid);
+    expect(result.code).toBe(CheckoutResultCode.WrongInvoice);
+    expect(result.message).toMatch(/did not name the invoice this checkout was opened for/i);
+  });
+
+  it('marks a success=1 link that is not paid in full, for a different invoice, as wrong_invoice', () => {
+    const result = resolveReturn(
+      `${RETURN_URL}?success=1&invoice_id=4400&invoice_status=AUTHORIZED`,
+      { expectedInvoiceId: 4512 },
+    );
+
+    expect(result.status).toBe(CheckoutStatus.NotPaid);
+    expect(result.code).toBe(CheckoutResultCode.WrongInvoice);
+  });
+
+  it('keeps unexpected_invoice_status for a success=1 link that is not paid in full, for the expected invoice', () => {
+    const result = resolveReturn(
+      `${RETURN_URL}?success=1&invoice_id=4512&invoice_status=AUTHORIZED`,
+      { expectedInvoiceId: 4512 },
+    );
+
+    expect(result.status).toBe(CheckoutStatus.NotPaid);
+    expect(result.code).toBe(CheckoutResultCode.UnexpectedInvoiceStatus);
   });
 });

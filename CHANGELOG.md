@@ -4,6 +4,26 @@ All notable changes to this package are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the package follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- With `expectedInvoiceId` set, a decline (`success=0`) whose link named a different
+  invoice, or none, came back as a plain `not_paid` with the link's decline message and
+  no `code`, so an app following
+  [Taking payments](docs/taking-payments.md#code-on-a-not_paid) offered a retry, although
+  the invoice this checkout was opened for may have been paid. Any link that does not name
+  that invoice is now `not_paid` with `code: 'wrong_invoice'` and the wrong-invoice
+  message, a decline included. GetPayIn's return link always names the invoice. An
+  unreadable link keeps `unreadable_return_link`.
+
+### Changed
+
+- The `wrong_invoice` message now reads "The return link did not name the invoice this
+  checkout was opened for, so it is not this checkout's result." The old text said the
+  link "named a different invoice", which was untrue for a link that named none. Branch on
+  `code`, not on the text.
+
 ## [0.1.1] - 2026-11-18
 
 ### Fixed
