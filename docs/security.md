@@ -40,9 +40,16 @@ So `status: 'paid'` means "the link said so", not "the money moved".
    cannot become the result of the next payment the payer starts. Values pulled from
    `getInitialURL()` are consumed once per process for the same reason; links pushed by the
    `url` event are not, because the system delivers each of those once as it happens.
-3. **`expectedInvoiceId` binds the link to the checkout.** With it set, a `paid` link
-   naming a different invoice, or naming none at all, is reported as `not_paid`. **Pass
-   it whenever you have it.** Without it the package has nothing to tie the link to.
+3. **`expectedInvoiceId` binds the link to the checkout.** With it set, a link naming a
+   different invoice, or naming none at all, is reported as `not_paid` with
+   `code: 'wrong_invoice'`, a decline too. GetPayIn's return link always names the
+   invoice, so a decline from another checkout, or one made up without an invoice, cannot
+   make your app offer a retry for an invoice that may be paid. A link that cannot be read
+   at all keeps `unreadable_return_link`, the code to alert on. **Pass it whenever you
+   have it.** Without it the package has nothing to tie the link to. It cannot catch a
+   made-up decline that names your own invoice: that comes back as a plain decline, with
+   no `code`. A decline is also only what the link said, so check the invoice on your
+   server before you create a new payment for the same order.
 4. **One checkout at a time**, so a second cannot be stacked over a live one.
 5. **A result is delivered once.** The return link can arrive from a web view navigation, a
    deep-link event and a recreated activity at the same moment; every settle after the

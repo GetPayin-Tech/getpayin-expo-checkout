@@ -52,8 +52,8 @@ const UNREADABLE_MESSAGE =
   'your server before you treat it as paid.';
 
 const WRONG_INVOICE_MESSAGE =
-  'The return link named a different invoice from the one this checkout was opened for, ' +
-  "so it is not this checkout's result.";
+  'The return link did not name the invoice this checkout was opened for, so it is not ' +
+  "this checkout's result.";
 
 const UNEXPECTED_STATUS_MESSAGE =
   'The checkout reported the invoice as something other than paid in full. Confirm it on ' +
@@ -203,10 +203,14 @@ export interface ReturnResolution {
 }
 
 /**
- * Refuses a `paid` that does not belong to the invoice the checkout was opened for.
+ * Refuses a result that does not belong to the invoice the checkout was opened for.
  *
- * Only `paid` is downgraded. A `not_paid` or `cancelled` carries no claim worth checking,
- * and rewriting it would lose the reason the payer was given.
+ * A result whose link names a different invoice, or none, becomes `not_paid` with
+ * `wrong_invoice`, a decline too. GetPayIn's return link always names the invoice, so a
+ * decline that names another one, or none, is not this checkout's result, and passing it on
+ * would have the app offer a retry for an invoice that may well be paid. Two results are
+ * left alone: `unreadable_return_link`, which already says the link could not be trusted
+ * and is the one to alert on, and `cancelled`, which carries no claim worth checking.
  *
  * Both sides go through `invoiceIdFrom` and `normalizeInvoiceId`, so a number from the
  * server and the text in the link are compared in one form. Only `undefined` means no
@@ -220,7 +224,11 @@ function bindToInvoice(
   result: CheckoutResult,
   expectedInvoiceId?: string | number,
 ): CheckoutResult {
-  if (expectedInvoiceId === undefined || result.status !== CheckoutStatus.Paid) {
+  if (
+    expectedInvoiceId === undefined ||
+    result.status === CheckoutStatus.Cancelled ||
+    result.code === CheckoutResultCode.UnreadableReturnLink
+  ) {
     return result;
   }
 

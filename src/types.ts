@@ -24,7 +24,8 @@ export type CheckoutStatusName = (typeof CheckoutStatus)[keyof typeof CheckoutSt
  * `unreadable_return_link` means the link's own fields could not be read: a genuine
  * decline carries no code at all, so the two are told apart by this rather than by text.
  * It is the one to alert on — it means the backend and this reader disagree about the
- * shape of the link. `wrong_invoice` means the link named another invoice. The payer may
+ * shape of the link. `wrong_invoice` means the link named another invoice than
+ * `expectedInvoiceId`, or none, a decline included. The payer may
  * well have paid in both cases, so neither is a reason to ask for payment again before the
  * invoice has been checked on your server.
  */
@@ -51,9 +52,10 @@ export interface CheckoutResult {
    * The invoice state the return link reported, as GetPayIn wrote it: `PAID`, `UNPAID`,
    * `PARTIALLY_PAID`, `AUTHORIZED` and so on.
    *
-   * Only `PAID` is reported as `paid`. Anything else is `not_paid` with
-   * `unexpected_invoice_status`, because an authorised or part-paid invoice is not an
-   * order to fulfil. Absent when the link did not carry the field.
+   * Only `PAID` is reported as `paid`. A `success=1` link with anything else is `not_paid`
+   * with `unexpected_invoice_status`, because an authorised or part-paid invoice is not an
+   * order to fulfil; with `wrong_invoice` instead when it also names another invoice than
+   * `expectedInvoiceId`, or none. Absent when the link did not carry the field.
    */
   readonly invoiceStatus?: string;
 
@@ -99,8 +101,9 @@ export interface CheckoutOptions {
    *
    * Supply it whenever you have it. The return link is a public app scheme that any web
    * page, message or other app on the phone can invoke with whatever query it likes, so a
-   * link naming a different invoice is not this checkout's result. With this set, such a
-   * link is reported as `not_paid` instead of being taken at its word.
+   * link naming a different invoice, or none, is not this checkout's result. With this set,
+   * such a link is reported as `not_paid` with `code: 'wrong_invoice'`, a decline included,
+   * instead of being taken at its word. An unreadable link keeps `unreadable_return_link`.
    *
    * A number is accepted as well as text: `POST /api/integration/init` and the
    * `@getpayin/getpayin` server SDK both return the invoice id as a number, while the
